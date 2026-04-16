@@ -34,6 +34,8 @@ public class MainController {
     @FXML private TableColumn<Gasto, String> colValor;
     @FXML private TableColumn<Gasto, String> colMetodo;
 
+    @FXML private Label lblTotal;
+
     private final SqliteGastoRepository repository = new SqliteGastoRepository();
     private final GerenciarGastoUseCase useCase = new GerenciarGastoUseCase(repository);
 
@@ -71,6 +73,8 @@ public class MainController {
         tableGastos.getItems().clear();
         List<Gasto> lista = repository.buscarTodos();
         tableGastos.getItems().addAll(lista);
+
+        atualizarTotal();
     }
 
     private void carregarMetodosNoCombo() {
@@ -149,5 +153,15 @@ public class MainController {
     @FXML
     private void abrirCadastroCategorias() {
         System.out.println("Abrindo tela de Categorias...");
+    }
+
+    private void atualizarTotal() {
+        // Calculamos o total a partir dos itens que estão na tabela
+        double total = tableGastos.getItems().stream()
+                .mapToDouble(Gasto::getValor)
+                .sum();
+
+        // Atualizamos o texto do Label com a formatação de moeda
+        lblTotal.setText(String.format("R$ %.2f", total));
     }
 }

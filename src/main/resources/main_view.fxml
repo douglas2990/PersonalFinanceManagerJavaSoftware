@@ -67,5 +67,12 @@
                 <TableColumn fx:id="colMetodo" text="Pagamento" prefWidth="100"/>
             </columns>
         </TableView>
+        <HBox alignment="CENTER_RIGHT" spacing="10">
+            <padding>
+                <Insets top="10" right="5"/>
+            </padding>
+            <Label text="Total do Mês:" style="-fx-font-weight: bold; -fx-font-size: 16px;"/>
+            <Label fx:id="lblTotal" text="R$ 0,00" style="-fx-font-weight: bold; -fx-font-size: 16px; -fx-text-fill: #27ae60;"/>
+        </HBox>
     </VBox>
 </VBox>
