@@ -55,12 +55,22 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
                         "UNIQUE(nome_categoria, mes, ano)" + // Impede metas duplicadas para o mesmo mês/categoria
                         ");";
 
+                String sqlMetaAnual = "CREATE TABLE IF NOT EXISTS metas_anuais (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+                        "nome_categoria TEXT NOT NULL," +
+                        "ano INTEGER NOT NULL," +
+                        "valor_padrao REAL NOT NULL," +
+                        "UNIQUE(nome_categoria, ano)" +
+                        ");";
+
 
 
                 stmt.execute(sqlGastos);
                 stmt.execute(sqlMetodos);
                 stmt.execute(sqlCategorias);
                 stmt.execute(sqlMetas);
+                stmt.execute(sqlMetaAnual);
+
             }
         } catch (SQLException e) {
             System.out.println("Erro ao iniciar banco: " + e.getMessage());
@@ -258,5 +268,50 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
             System.out.println("Erro ao buscar meta: " + e.getMessage());
         }
         return 0.0; // Se não houver meta definida, retorna zero
+    }
+
+    // --- MÉTODOS DE METAS (ANUAL E MENSAL) ---
+
+    // Este é o método principal que o seu Dashboard vai chamar agora!
+    public double buscarMetaFinal(String categoria, int mes, int ano) {
+        // 1. Tenta buscar a meta específica do mês
+        double mensal = buscarMetaPorCategoria(categoria, mes, ano);
+        if (mensal > 0) return mensal;
+
+        // 2. Se não existir, busca a meta anual padrão
+        return buscarMetaAnual(categoria, ano);
+    }
+
+    // Método para buscar especificamente na nova tabela de metas anuais
+    public double buscarMetaAnual(String nomeCategoria, int ano) {
+        String sql = "SELECT valor_padrao FROM metas_anuais WHERE nome_categoria = ? AND ano = ?";
+        try (Connection conn = DriverManager.getConnection(URL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, nomeCategoria);
+            pstmt.setInt(2, ano);
+
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getDouble("valor_padrao");
+            }
+        } catch (SQLException e) {
+            System.out.println("Erro ao buscar meta anual: " + e.getMessage());
+        }
+        return 0.0;
+    }
+
+    // Método para salvar a meta anual (para o seu novo botão de "Meta Anual")
+    public void salvarOuAtualizarMetaAnual(String nomeCategoria, int ano, double valor) {
+        String sql = "INSERT OR REPLACE INTO metas_anuais(nome_categoria, ano, valor_padrao) VALUES(?,?,?)";
+        try (Connection conn = DriverManager.getConnection(URL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, nomeCategoria);
+            pstmt.setInt(2, ano);
+            pstmt.setDouble(3, valor);
+            pstmt.executeUpdate();
+            System.out.println("✅ Meta ANUAL de " + nomeCategoria + " definida: R$ " + valor);
+        } catch (SQLException e) {
+            System.out.println("❌ Erro ao salvar meta anual: " + e.getMessage());
+        }
     }
 }

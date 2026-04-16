@@ -42,7 +42,10 @@
     </TableView>
 
     <HBox spacing="10" alignment="CENTER_RIGHT">
-        <Button text="Definir Metas" onAction="#abrirDefinirMetas"
+        <Button text="Definir Meta Fixa (Anual)" onAction="#abrirPlanejamentoAnual"
+                style="-fx-background-color: #34495e; -fx-text-fill: white; -fx-font-weight: bold;"/>
+
+        <Button text="Definir Meta Mensal" onAction="#abrirDefinirMetas"
                 style="-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-weight: bold;"/>
         <Button text="Fechar" onAction="#fecharJanela" />
     </HBox>

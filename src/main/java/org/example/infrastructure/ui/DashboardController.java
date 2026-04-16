@@ -70,7 +70,7 @@ public class DashboardController {
 
         for (Categoria cat : categorias) {
             // 2. Buscamos a meta definida para essa categoria/mês
-            double meta = repository.buscarMetaPorCategoria(cat.getNome(), mes, ano);
+            double meta = repository.buscarMetaFinal(cat.getNome(), mes, ano);
 
             // 3. Calculamos o quanto já foi gasto (realizado)
             double realizado = repository.buscarTodos().stream()
@@ -121,6 +121,37 @@ public class DashboardController {
             atualizarDashboard(); // Atualiza a tabela quando fechar a janelinha de metas
 
         } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    @FXML
+    private void abrirPlanejamentoAnual() {
+        // 1. Teste de sinal: Se isso não aparecer no console, o FXML não está ligado ao Controller
+        System.out.println(">>> Clique detectado no método abrirPlanejamentoAnual!");
+
+        try {
+            java.net.URL fxmlLocation = getClass().getResource("/planejamento_anual_view.fxml");
+
+            // 2. Teste de arquivo: Se for null, o Java não achou o arquivo na pasta resources
+            if (fxmlLocation == null) {
+                System.err.println(">>> ERRO: O arquivo planejamento_anual_view.fxml não foi encontrado!");
+                return;
+            }
+
+            FXMLLoader loader = new FXMLLoader(fxmlLocation);
+            Parent root = loader.load();
+
+            Stage stage = new Stage();
+            stage.setTitle("Planejamento Orçamentário Anual");
+            stage.initModality(Modality.APPLICATION_MODAL);
+            stage.setScene(new Scene(root));
+            stage.showAndWait();
+
+            atualizarDashboard();
+
+        } catch (Exception e) {
+            // 3. Teste de erro interno: Mostra exatamente o que impediu a tela de abrir
+            System.err.println(">>> FALHA AO CARREGAR A TELA:");
             e.printStackTrace();
         }
     }
