@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.control.*?>
+<?import javafx.geometry.Insets?>
+
+<VBox spacing="10" alignment="CENTER" xmlns="http://javafx.com/javafx/8"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="org.example.infrastructure.ui.CategoriasController"
+      prefWidth="300.0">
+
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <Label text="Nova Categoria" style="-fx-font-weight: bold; -fx-font-size: 16px;"/>
+
+    <TextField fx:id="txtNomeCategoria" promptText="Ex: Alimentação, Lazer..."/>
+
+    <Button text="Salvar Categoria" onAction="#aoSalvar" maxWidth="Infinity"
+            style="-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-weight: bold;"/>
+</VBox>

@@ -6,10 +6,10 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.HBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import org.example.domain.entity.Categoria; // Import da nova classe
 import org.example.domain.entity.Gasto;
 import org.example.domain.entity.MetodoPagamento;
 import org.example.infrastructure.database.SqliteGastoRepository;
@@ -20,20 +20,17 @@ import java.time.LocalDate;
 import java.util.List;
 
 public class MainController {
-    // Campos de Entrada
     @FXML private TextField txtDescricao, txtValor, txtQtdParcelas;
     @FXML private DatePicker dpData;
-    @FXML private ComboBox<String> cbCategoria, cbMetodo;
+
+    // AJUSTE: ComboBox agora é de Categoria
+    @FXML private ComboBox<Categoria> cbCategoria;
+    @FXML private ComboBox<String> cbMetodo;
+
     @FXML private CheckBox chkParcelado;
     @FXML private HBox containerParcelas;
-
-    // Componentes da Tabela
     @FXML private TableView<Gasto> tableGastos;
-    @FXML private TableColumn<Gasto, String> colData;
-    @FXML private TableColumn<Gasto, String> colDescricao;
-    @FXML private TableColumn<Gasto, String> colValor;
-    @FXML private TableColumn<Gasto, String> colMetodo;
-
+    @FXML private TableColumn<Gasto, String> colData, colDescricao, colValor, colMetodo;
     @FXML private Label lblTotal;
 
     private final SqliteGastoRepository repository = new SqliteGastoRepository();
@@ -42,39 +39,31 @@ public class MainController {
     @FXML
     public void initialize() {
         dpData.setValue(LocalDate.now());
-
-        // Configurações iniciais
-        cbCategoria.getItems().addAll("Alimentação", "Lazer", "Contas Fixas", "Saúde", "Transporte");
-
         configurarTabela();
+        carregarCategoriasNoCombo();
         carregarMetodosNoCombo();
         atualizarTabela();
     }
 
     private void configurarTabela() {
-        // Data formatada
-        colData.setCellValueFactory(cellData ->
-                new SimpleStringProperty(cellData.getValue().getData().toString()));
+        colData.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getData().toString()));
+        colDescricao.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getDescricao()));
 
-        // Descrição
-        colDescricao.setCellValueFactory(cellData ->
-                new SimpleStringProperty(cellData.getValue().getDescricao()));
-
-        // Valor em Reais (R$) - Agora como String para aceitar a formatação
+        // Valor formatado com R$
         colValor.setCellValueFactory(cellData ->
                 new SimpleStringProperty(String.format("R$ %.2f", cellData.getValue().getValor())));
 
-        // Método de Pagamento
-        colMetodo.setCellValueFactory(cellData ->
-                new SimpleStringProperty(cellData.getValue().getMetodo().getNome()));
+        colMetodo.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getMetodo().getNome()));
+
+        // Alinhamento profissional para valores financeiros
+        colValor.setStyle("-fx-alignment: CENTER-RIGHT;");
     }
 
-    private void atualizarTabela() {
-        tableGastos.getItems().clear();
-        List<Gasto> lista = repository.buscarTodos();
-        tableGastos.getItems().addAll(lista);
-
-        atualizarTotal();
+    private void carregarCategoriasNoCombo() {
+        cbCategoria.getItems().clear();
+        // Busca a lista de objetos Categoria do banco
+        List<Categoria> categorias = repository.buscarTodasCategorias();
+        cbCategoria.getItems().addAll(categorias);
     }
 
     private void carregarMetodosNoCombo() {
@@ -86,38 +75,51 @@ public class MainController {
     }
 
     @FXML
-    private void aoToggleParcelas() {
-        containerParcelas.setVisible(chkParcelado.isSelected());
-    }
-
-    @FXML
     protected void aoSalvar() {
         try {
             String desc = txtDescricao.getText();
             double valor = Double.parseDouble(txtValor.getText().replace(",", "."));
             LocalDate data = dpData.getValue();
-            String cat = cbCategoria.getValue();
+
+            // AJUSTE: Pega o objeto Categoria selecionado
+            Categoria cat = cbCategoria.getValue();
             String nomeMetodo = cbMetodo.getValue();
 
-            if (desc.isEmpty() || nomeMetodo == null) {
-                System.out.println("Preencha os campos obrigatórios!");
+            if (desc.isEmpty() || cat == null || nomeMetodo == null) {
+                System.out.println("Preencha todos os campos!");
                 return;
             }
 
             MetodoPagamento metodo = new MetodoPagamento(nomeMetodo, 0);
             int parcelas = chkParcelado.isSelected() ? Integer.parseInt(txtQtdParcelas.getText()) : 1;
 
+            // Criando o gasto com o objeto Categoria corrigido
             Gasto gasto = new Gasto(desc, valor, data, cat, metodo, false, parcelas, 1);
             useCase.registrarGasto(gasto);
 
-            System.out.println("✅ Gasto registrado!");
-
             limparCampos();
-            atualizarTabela(); // Atualiza a lista na hora
-
+            atualizarTabela();
         } catch (Exception e) {
             System.err.println("Erro ao salvar: " + e.getMessage());
         }
+    }
+
+    private void atualizarTabela() {
+        tableGastos.getItems().clear();
+        tableGastos.getItems().addAll(repository.buscarTodos());
+        atualizarTotal();
+    }
+
+    private void atualizarTotal() {
+        double total = tableGastos.getItems().stream()
+                .mapToDouble(Gasto::getValor)
+                .sum();
+        lblTotal.setText(String.format("R$ %.2f", total));
+    }
+
+    @FXML
+    private void aoToggleParcelas() {
+        containerParcelas.setVisible(chkParcelado.isSelected());
     }
 
     private void limparCampos() {
@@ -130,38 +132,28 @@ public class MainController {
 
     @FXML
     private void abrirCadastroMetodos() {
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/metodos_view.fxml"));
-            Parent root = loader.load();
-
-            Stage stage = new Stage();
-            stage.setTitle("Cadastro de Métodos de Pagamento");
-            stage.initModality(Modality.APPLICATION_MODAL);
-            stage.setScene(new Scene(root));
-
-            // Espera fechar para atualizar o combo e a tabela
-            stage.showAndWait();
-
-            carregarMetodosNoCombo();
-            atualizarTabela();
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        abrirJanela("/metodos_view.fxml", "Cadastro de Métodos");
+        carregarMetodosNoCombo();
     }
 
     @FXML
     private void abrirCadastroCategorias() {
-        System.out.println("Abrindo tela de Categorias...");
+        abrirJanela("/categorias_view.fxml", "Cadastro de Categorias");
+        carregarCategoriasNoCombo();
     }
 
-    private void atualizarTotal() {
-        // Calculamos o total a partir dos itens que estão na tabela
-        double total = tableGastos.getItems().stream()
-                .mapToDouble(Gasto::getValor)
-                .sum();
-
-        // Atualizamos o texto do Label com a formatação de moeda
-        lblTotal.setText(String.format("R$ %.2f", total));
+    // Método auxiliar para evitar repetição de código ao abrir janelas
+    private void abrirJanela(String fxml, String titulo) {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource(fxml));
+            Parent root = loader.load();
+            Stage stage = new Stage();
+            stage.setTitle(titulo);
+            stage.initModality(Modality.APPLICATION_MODAL);
+            stage.setScene(new Scene(root));
+            stage.showAndWait();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }

@@ -1,5 +1,6 @@
 package org.example.infrastructure.database;
 
+import org.example.domain.entity.Categoria; // Importante importar a nova Entity
 import org.example.domain.entity.Gasto;
 import org.example.domain.entity.MetodoPagamento;
 import org.example.domain.repository.GastoRepository;
@@ -22,7 +23,6 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
             if (conn != null) {
                 Statement stmt = conn.createStatement();
 
-                // Tabela de Gastos com colunas de parcelamento
                 String sqlGastos = "CREATE TABLE IF NOT EXISTS gastos (" +
                         "id INTEGER PRIMARY KEY AUTOINCREMENT," +
                         "descricao TEXT NOT NULL," +
@@ -34,15 +34,20 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
                         "parcela_atual INTEGER" +
                         ");";
 
-                // Tabela de Métodos de Pagamento
                 String sqlMetodos = "CREATE TABLE IF NOT EXISTS metodos_pagamento (" +
                         "id INTEGER PRIMARY KEY AUTOINCREMENT," +
                         "nome TEXT NOT NULL UNIQUE," +
                         "dia_vencimento INTEGER" +
                         ");";
 
+                String sqlCategorias = "CREATE TABLE IF NOT EXISTS categorias (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+                        "nome TEXT NOT NULL UNIQUE" +
+                        ");";
+
                 stmt.execute(sqlGastos);
                 stmt.execute(sqlMetodos);
+                stmt.execute(sqlCategorias);
             }
         } catch (SQLException e) {
             System.out.println("Erro ao iniciar banco: " + e.getMessage());
@@ -60,7 +65,10 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
             pstmt.setString(1, gasto.getDescricao());
             pstmt.setDouble(2, gasto.getValor());
             pstmt.setString(3, gasto.getData().toString());
-            pstmt.setString(4, gasto.getCategoria());
+
+            // AJUSTE: Pegamos o nome do objeto Categoria
+            pstmt.setString(4, gasto.getCategoria().getNome());
+
             pstmt.setString(5, gasto.getMetodo().getNome());
             pstmt.setInt(6, gasto.getTotalParcelas());
             pstmt.setInt(7, gasto.getParcelaAtual());
@@ -74,7 +82,6 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
     @Override
     public List<Gasto> buscarTodos() {
         List<Gasto> lista = new ArrayList<>();
-        // Fazemos um JOIN ou apenas pegamos os dados? Por enquanto, vamos buscar os gastos:
         String sql = "SELECT * FROM gastos ORDER BY data DESC";
 
         try (Connection conn = DriverManager.getConnection(URL);
@@ -83,13 +90,16 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
 
             while (rs.next()) {
                 String dataString = rs.getString("data");
-                LocalDate dataFinal = LocalDate.parse(dataString); // Garante que a String vire objeto data
+                LocalDate dataFinal = LocalDate.parse(dataString);
+
+                // AJUSTE: Criamos o objeto Categoria a partir da string do banco
+                Categoria cat = new Categoria(rs.getString("categoria"));
 
                 Gasto gasto = new Gasto(
-                        rs.getString("descricao"), // Verifique se o nome da coluna no banco é exatamente 'descricao'
+                        rs.getString("descricao"),
                         rs.getDouble("valor"),
                         dataFinal,
-                        rs.getString("categoria"),
+                        cat, // Passando o objeto Categoria
                         new MetodoPagamento(rs.getString("metodo"), 0),
                         false,
                         rs.getInt("total_parcelas"),
@@ -108,7 +118,7 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
         return new ArrayList<>();
     }
 
-    // --- MÉTODOS DE PAGAMENTO (MetodoRepository) ---
+    // --- MÉTODOS DE PAGAMENTO ---
 
     @Override
     public void salvarMetodo(MetodoPagamento metodo) {
@@ -141,6 +151,35 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
             }
         } catch (SQLException e) {
             System.out.println("❌ Erro ao buscar métodos: " + e.getMessage());
+        }
+        return lista;
+    }
+
+    // --- MÉTODOS DE CATEGORIAS ---
+
+    public void salvarCategoria(Categoria categoria) {
+        String sql = "INSERT INTO categorias(nome) VALUES(?)";
+        try (Connection conn = DriverManager.getConnection(URL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, categoria.getNome());
+            pstmt.executeUpdate();
+            System.out.println("✅ Categoria salva: " + categoria.getNome());
+        } catch (SQLException e) {
+            System.out.println("Erro ao salvar categoria: " + e.getMessage());
+        }
+    }
+
+    public List<Categoria> buscarTodasCategorias() {
+        List<Categoria> lista = new ArrayList<>();
+        String sql = "SELECT id, nome FROM categorias";
+        try (Connection conn = DriverManager.getConnection(URL);
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                lista.add(new Categoria(rs.getInt("id"), rs.getString("nome")));
+            }
+        } catch (SQLException e) {
+            System.out.println("Erro ao buscar categorias: " + e.getMessage());
         }
         return lista;
     }
