@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.control.*?>
+<?import javafx.geometry.Insets?>
+
+<?import javafx.scene.layout.HBox?>
+
+<VBox spacing="15" alignment="CENTER" xmlns="http://javafx.com/javafx/8"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="org.example.infrastructure.ui.DefinirMetasController"
+      prefWidth="300.0">
+
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <Label text="Definir Meta Mensal" style="-fx-font-weight: bold; -fx-font-size: 16px;"/>
+
+    <ComboBox fx:id="cbCategoria" promptText="Selecione a Categoria" maxWidth="Infinity"/>
+
+    <TextField fx:id="txtValorMeta" promptText="Valor da Meta (ex: 500.00)"/>
+
+    <HBox spacing="10" alignment="CENTER">
+        <Button text="Salvar Meta" onAction="#aoSalvar" maxWidth="Infinity" HBox.hgrow="ALWAYS"
+                style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold;"/>
+        <Button text="Cancelar" onAction="#aoCancelar" />
+    </HBox>
+</VBox>

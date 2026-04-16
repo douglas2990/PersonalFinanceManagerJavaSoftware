@@ -186,4 +186,24 @@ public class MainController {
             e.printStackTrace();
         }
     }
+    @FXML
+    private void abrirDashboard() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/dashboard_view.fxml"));
+            Parent root = loader.load();
+
+            Stage stage = new Stage();
+            stage.setTitle("Dashboard de Metas e Balanço");
+            stage.initModality(Modality.APPLICATION_MODAL); // Trava a tela de trás
+            stage.setScene(new Scene(root));
+            stage.showAndWait();
+
+            // Quando fechar o dashboard, atualiza a tela principal por segurança
+            atualizarTabela();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.err.println("Erro ao abrir o Dashboard: " + e.getMessage());
+        }
+    }
 }

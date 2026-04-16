@@ -45,9 +45,22 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
                         "nome TEXT NOT NULL UNIQUE" +
                         ");";
 
+                // Tabela de Metas por Categoria e Mês
+                String sqlMetas = "CREATE TABLE IF NOT EXISTS metas_categoria (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+                        "nome_categoria TEXT NOT NULL," + // Usando o nome para simplificar o JOIN com seus gastos atuais
+                        "mes INTEGER NOT NULL," +
+                        "ano INTEGER NOT NULL," +
+                        "valor_meta REAL NOT NULL," +
+                        "UNIQUE(nome_categoria, mes, ano)" + // Impede metas duplicadas para o mesmo mês/categoria
+                        ");";
+
+
+
                 stmt.execute(sqlGastos);
                 stmt.execute(sqlMetodos);
                 stmt.execute(sqlCategorias);
+                stmt.execute(sqlMetas);
             }
         } catch (SQLException e) {
             System.out.println("Erro ao iniciar banco: " + e.getMessage());
@@ -206,5 +219,44 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
                 rs.getInt("total_parcelas"),
                 rs.getInt("parcela_atual")
         );
+    }
+    public void definirMeta(int categoriaId, int mes, int ano, double valor) {
+        String sql = "INSERT OR REPLACE INTO metas_categoria(categoria_id, mes, ano, valor_meta) VALUES(?,?,?,?)";
+        // ... lógica do PreparedStatement ...
+    }
+
+    public void salvarOuAtualizarMeta(String nomeCategoria, int mes, int ano, double valor) {
+        // O "INSERT OR REPLACE" é o segredo aqui: se já existir meta para esse mês/categoria, ele apenas atualiza o valor
+        String sql = "INSERT OR REPLACE INTO metas_categoria(nome_categoria, mes, ano, valor_meta) VALUES(?,?,?,?)";
+
+        try (Connection conn = DriverManager.getConnection(URL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, nomeCategoria);
+            pstmt.setInt(2, mes);
+            pstmt.setInt(3, ano);
+            pstmt.setDouble(4, valor);
+            pstmt.executeUpdate();
+            System.out.println("✅ Meta de " + nomeCategoria + " atualizada para R$ " + valor);
+        } catch (SQLException e) {
+            System.out.println("❌ Erro ao salvar meta: " + e.getMessage());
+        }
+    }
+
+    public double buscarMetaPorCategoria(String nomeCategoria, int mes, int ano) {
+        String sql = "SELECT valor_meta FROM metas_categoria WHERE nome_categoria = ? AND mes = ? AND ano = ?";
+        try (Connection conn = DriverManager.getConnection(URL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, nomeCategoria);
+            pstmt.setInt(2, mes);
+            pstmt.setInt(3, ano);
+
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getDouble("valor_meta");
+            }
+        } catch (SQLException e) {
+            System.out.println("Erro ao buscar meta: " + e.getMessage());
+        }
+        return 0.0; // Se não houver meta definida, retorna zero
     }
 }

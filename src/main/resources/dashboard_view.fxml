@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.geometry.Insets?>
+
+<VBox spacing="15" prefWidth="700.0" prefHeight="500.0" xmlns="http://javafx.com/javafx/8"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="org.example.infrastructure.ui.DashboardController">
+
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <HBox spacing="20" alignment="CENTER_LEFT">
+        <VBox>
+            <Label text="Resumo Mensal de Metas" style="-fx-font-weight: bold; -fx-font-size: 18px;"/>
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <ComboBox fx:id="cbMes" prefWidth="120"/>
+                <Spinner fx:id="spAno" prefWidth="80"/>
+            </HBox>
+        </VBox>
+
+        <Region HBox.hgrow="ALWAYS" />
+
+        <VBox alignment="CENTER_RIGHT">
+            <Label text="Balanço Geral:" style="-fx-font-size: 14px;"/>
+            <Label fx:id="lblStatusGeral" text="R$ 0,00" style="-fx-font-weight: bold; -fx-font-size: 20px;"/>
+        </VBox>
+    </HBox>
+
+    <Separator/>
+
+    <TableView fx:id="tableResumo" VBox.vgrow="ALWAYS">
+        <columns>
+            <TableColumn fx:id="colCategoria" text="Categoria" prefWidth="150"/>
+            <TableColumn fx:id="colMeta" text="Meta (Planejado)" prefWidth="120"/>
+            <TableColumn fx:id="colGasto" text="Gasto (Realizado)" prefWidth="120"/>
+            <TableColumn fx:id="colSaldo" text="Diferença" prefWidth="120"/>
+            <TableColumn fx:id="colStatus" text="Status" prefWidth="130"/>
+        </columns>
+    </TableView>
+
+    <HBox spacing="10" alignment="CENTER_RIGHT">
+        <Button text="Definir Metas" onAction="#abrirDefinirMetas"
+                style="-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-weight: bold;"/>
+        <Button text="Fechar" onAction="#fecharJanela" />
+    </HBox>
+
+</VBox>
