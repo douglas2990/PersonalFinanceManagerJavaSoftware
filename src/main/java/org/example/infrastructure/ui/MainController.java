@@ -1,10 +1,12 @@
 package org.example.infrastructure.ui;
 
+import javafx.beans.property.SimpleStringProperty;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.HBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
@@ -23,6 +25,11 @@ public class MainController {
     @FXML private ComboBox<String> cbCategoria, cbMetodo;
     @FXML private CheckBox chkParcelado;
     @FXML private HBox containerParcelas;
+    @FXML private TableView<Gasto> tableGastos;
+    @FXML private TableColumn<Gasto, String> colData;
+    @FXML private TableColumn<Gasto, String> colDescricao;
+    @FXML private TableColumn<Gasto, Double> colValor;
+    @FXML private TableColumn<Gasto, String> colMetodo;
 
     private final SqliteGastoRepository repository = new SqliteGastoRepository();
     private final GerenciarGastoUseCase useCase = new GerenciarGastoUseCase(repository);
@@ -37,6 +44,9 @@ public class MainController {
 
         // BUSCA DINÂMICA: Carrega o que estiver no SQLite
         carregarMetodosNoCombo();
+
+        configurarTabela();
+        atualizarTabela();
     }
 
     @FXML
@@ -116,5 +126,22 @@ public class MainController {
                 cbMetodo.getItems().add(m.getNome());
             }
         }
+    }
+
+    private void configurarTabela() {
+        // Diz para a coluna qual atributo da classe Gasto ela deve olhar
+        colData.setCellValueFactory(new PropertyValueFactory<>("data"));
+        colDescricao.setCellValueFactory(new PropertyValueFactory<>("descricao"));
+        colValor.setCellValueFactory(new PropertyValueFactory<>("valor"));
+
+        // Como o método é um objeto, precisamos de uma lógica extra para pegar só o nome
+        colMetodo.setCellValueFactory(cellData ->
+                new SimpleStringProperty(cellData.getValue().getMetodo().getNome()));
+    }
+
+    private void atualizarTabela() {
+        tableGastos.getItems().clear();
+        List<Gasto> gastos = repository.buscarTodos(); // Precisaremos implementar isso no Repository!
+        tableGastos.getItems().addAll(gastos);
     }
 }
