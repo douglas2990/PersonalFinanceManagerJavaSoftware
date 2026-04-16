@@ -31,7 +31,7 @@ public class MainController {
     @FXML private TableView<Gasto> tableGastos;
     @FXML private TableColumn<Gasto, String> colData;
     @FXML private TableColumn<Gasto, String> colDescricao;
-    @FXML private TableColumn<Gasto, Double> colValor;
+    @FXML private TableColumn<Gasto, String> colValor;
     @FXML private TableColumn<Gasto, String> colMetodo;
 
     private final SqliteGastoRepository repository = new SqliteGastoRepository();
@@ -50,12 +50,19 @@ public class MainController {
     }
 
     private void configurarTabela() {
-        // Vincula as colunas aos atributos da classe Gasto
-        colData.setCellValueFactory(new PropertyValueFactory<>("data"));
-        colDescricao.setCellValueFactory(new PropertyValueFactory<>("descricao"));
-        colValor.setCellValueFactory(new PropertyValueFactory<>("valor"));
+        // Data formatada
+        colData.setCellValueFactory(cellData ->
+                new SimpleStringProperty(cellData.getValue().getData().toString()));
 
-        // Lógica especial para exibir apenas o nome do método (que é um objeto)
+        // Descrição
+        colDescricao.setCellValueFactory(cellData ->
+                new SimpleStringProperty(cellData.getValue().getDescricao()));
+
+        // Valor em Reais (R$) - Agora como String para aceitar a formatação
+        colValor.setCellValueFactory(cellData ->
+                new SimpleStringProperty(String.format("R$ %.2f", cellData.getValue().getValor())));
+
+        // Método de Pagamento
         colMetodo.setCellValueFactory(cellData ->
                 new SimpleStringProperty(cellData.getValue().getMetodo().getNome()));
     }
