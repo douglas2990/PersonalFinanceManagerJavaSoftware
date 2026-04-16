@@ -63,6 +63,7 @@
             <columns>
                 <TableColumn fx:id="colData" text="Data" prefWidth="90"/>
                 <TableColumn fx:id="colDescricao" text="Descrição" prefWidth="150"/>
+                <TableColumn fx:id="colCategoria" text="Categoria" prefWidth="120"/>
                 <TableColumn fx:id="colValor" text="Valor" prefWidth="80"/>
                 <TableColumn fx:id="colMetodo" text="Pagamento" prefWidth="100"/>
             </columns>

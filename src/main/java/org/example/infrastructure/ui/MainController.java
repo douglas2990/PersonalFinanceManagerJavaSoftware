@@ -30,7 +30,7 @@ public class MainController {
     @FXML private CheckBox chkParcelado;
     @FXML private HBox containerParcelas;
     @FXML private TableView<Gasto> tableGastos;
-    @FXML private TableColumn<Gasto, String> colData, colDescricao, colValor, colMetodo;
+    @FXML private TableColumn<Gasto, String> colData, colDescricao,colCategoria, colValor, colMetodo;
     @FXML private Label lblTotal;
 
     private final SqliteGastoRepository repository = new SqliteGastoRepository();
@@ -55,6 +55,8 @@ public class MainController {
 
         colMetodo.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getMetodo().getNome()));
 
+        colCategoria.setCellValueFactory(cellData ->
+                new SimpleStringProperty(cellData.getValue().getCategoria().getNome()));
         // Alinhamento profissional para valores financeiros
         colValor.setStyle("-fx-alignment: CENTER-RIGHT;");
     }
