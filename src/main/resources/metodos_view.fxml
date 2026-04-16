@@ -5,15 +5,18 @@
 
 <VBox spacing="10" alignment="CENTER" xmlns="http://javafx.com/javafx/8"
       xmlns:fx="http://javafx.com/fxml/1"
-      prefWidth="300.0"> <padding>
-    <Insets top="20" right="20" bottom="20" left="20"/>
-</padding>
+      fx:controller="org.example.infrastructure.ui.MetodosController"
+      prefWidth="300.0">
+
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
 
     <Label text="Novo Cartão/Conta" style="-fx-font-weight: bold; -fx-font-size: 16px;"/>
 
     <TextField fx:id="txtNomeMetodo" promptText="Nome (ex: Nubank)"/>
     <TextField fx:id="txtVencimento" promptText="Dia do Vencimento"/>
 
-    <Button text="Salvar" maxWidth="Infinity"
+    <Button text="Salvar" onAction="#aoSalvar" maxWidth="Infinity"
             style="-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-weight: bold;"/>
 </VBox>

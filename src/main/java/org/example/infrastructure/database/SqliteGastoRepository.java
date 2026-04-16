@@ -72,7 +72,34 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
 
     @Override
     public List<Gasto> buscarTodos() {
-        return new ArrayList<>(); // Implementaremos a lógica de listagem depois
+        List<Gasto> lista = new ArrayList<>();
+        // Fazemos um JOIN ou apenas pegamos os dados? Por enquanto, vamos buscar os gastos:
+        String sql = "SELECT * FROM gastos ORDER BY data DESC";
+
+        try (Connection conn = DriverManager.getConnection(URL);
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+
+            while (rs.next()) {
+                // Criamos um método temporário só para preencher o objeto Gasto
+                MetodoPagamento mp = new MetodoPagamento(rs.getString("metodo"), 0);
+
+                Gasto gasto = new Gasto(
+                        rs.getString("descricao"),
+                        rs.getDouble("valor"),
+                        java.time.LocalDate.parse(rs.getString("data")),
+                        rs.getString("categoria"),
+                        mp,
+                        false, // simplificando parcelado para a listagem inicial
+                        rs.getInt("total_parcelas"),
+                        rs.getInt("parcela_atual")
+                );
+                lista.add(gasto);
+            }
+        } catch (SQLException e) {
+            System.out.println("Erro ao buscar gastos: " + e.getMessage());
+        }
+        return lista;
     }
 
     @Override
