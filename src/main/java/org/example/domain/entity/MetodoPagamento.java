@@ -1,8 +1,8 @@
 package org.example.domain.entity;
 
 public class MetodoPagamento {
-    private String nome; // Ex: "Nubank", "Santander"
-    private int diaVencimento; // Para o sistema te avisar quando pagar
+    private String nome;
+    private int diaVencimento;
 
     public MetodoPagamento(String nome, int diaVencimento) {
         this.nome = nome;
@@ -10,5 +10,11 @@ public class MetodoPagamento {
     }
 
     // Getters
-    public String getNome() { return nome; }
+    public String getNome() {
+        return nome;
+    }
+
+    public int getDiaVencimento() {
+        return diaVencimento;
+    }
 }

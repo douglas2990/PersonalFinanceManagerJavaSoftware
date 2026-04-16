@@ -1,13 +1,15 @@
 package org.example.infrastructure.database;
 
 import org.example.domain.entity.Gasto;
+import org.example.domain.entity.MetodoPagamento;
 import org.example.domain.repository.GastoRepository;
+import org.example.domain.repository.MetodoRepository;
 
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SqliteGastoRepository implements GastoRepository {
+public class SqliteGastoRepository implements GastoRepository, MetodoRepository {
     private static final String URL = "jdbc:sqlite:financas.db";
 
     public SqliteGastoRepository() {
@@ -17,23 +19,36 @@ public class SqliteGastoRepository implements GastoRepository {
     private void initDatabase() {
         try (Connection conn = DriverManager.getConnection(URL)) {
             if (conn != null) {
-                String sql = "CREATE TABLE IF NOT EXISTS gastos (" +
+                Statement stmt = conn.createStatement();
+
+                // Tabela de Gastos com colunas de parcelamento
+                String sqlGastos = "CREATE TABLE IF NOT EXISTS gastos (" +
                         "id INTEGER PRIMARY KEY AUTOINCREMENT," +
                         "descricao TEXT NOT NULL," +
-                        "valor REAL NOT NULL," +
-                        "data TEXT NOT NULL," +
+                        "valor REAL," +
+                        "data TEXT," +
                         "categoria TEXT," +
                         "metodo TEXT," +
                         "total_parcelas INTEGER," +
                         "parcela_atual INTEGER" +
                         ");";
-                Statement stmt = conn.createStatement();
-                stmt.execute(sql);
+
+                // Tabela de Métodos de Pagamento
+                String sqlMetodos = "CREATE TABLE IF NOT EXISTS metodos_pagamento (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+                        "nome TEXT NOT NULL UNIQUE," +
+                        "dia_vencimento INTEGER" +
+                        ");";
+
+                stmt.execute(sqlGastos);
+                stmt.execute(sqlMetodos);
             }
         } catch (SQLException e) {
-            System.out.println(e.getMessage());
+            System.out.println("Erro ao iniciar banco: " + e.getMessage());
         }
     }
+
+    // --- MÉTODOS DE GASTOS ---
 
     @Override
     public void salvar(Gasto gasto) {
@@ -49,19 +64,56 @@ public class SqliteGastoRepository implements GastoRepository {
             pstmt.setInt(6, gasto.getTotalParcelas());
             pstmt.setInt(7, gasto.getParcelaAtual());
             pstmt.executeUpdate();
+            System.out.println("✅ Gasto salvo no banco!");
         } catch (SQLException e) {
-            System.out.println(e.getMessage());
+            System.out.println("❌ Erro ao salvar gasto: " + e.getMessage());
         }
     }
 
     @Override
     public List<Gasto> buscarTodos() {
-        // Implementaremos a lógica de busca depois
-        return new ArrayList<>();
+        return new ArrayList<>(); // Implementaremos a lógica de listagem depois
     }
 
     @Override
     public List<Gasto> buscarPorMesEAno(int mes, int ano) {
         return new ArrayList<>();
+    }
+
+    // --- MÉTODOS DE PAGAMENTO (MetodoRepository) ---
+
+    @Override
+    public void salvarMetodo(MetodoPagamento metodo) {
+        String sql = "INSERT INTO metodos_pagamento(nome, dia_vencimento) VALUES(?,?)";
+        try (Connection conn = DriverManager.getConnection(URL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, metodo.getNome());
+            pstmt.setInt(2, metodo.getDiaVencimento());
+            pstmt.executeUpdate();
+            System.out.println("✅ Cartão/Método salvo: " + metodo.getNome());
+        } catch (SQLException e) {
+            System.out.println("❌ Erro ao salvar método: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public List<MetodoPagamento> buscarTodosMetodos() {
+        List<MetodoPagamento> lista = new ArrayList<>();
+        String sql = "SELECT nome, dia_vencimento FROM metodos_pagamento";
+
+        try (Connection conn = DriverManager.getConnection(URL);
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+
+            while (rs.next()) {
+                lista.add(new MetodoPagamento(
+                        rs.getString("nome"),
+                        rs.getInt("dia_vencimento")
+                ));
+            }
+        } catch (SQLException e) {
+            System.out.println("❌ Erro ao buscar métodos: " + e.getMessage());
+        }
+        return lista;
     }
 }

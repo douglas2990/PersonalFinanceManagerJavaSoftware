@@ -15,6 +15,7 @@ import org.example.usecase.GerenciarGastoUseCase;
 
 import java.io.IOException;
 import java.time.LocalDate;
+import java.util.List;
 
 public class MainController {
     @FXML private TextField txtDescricao, txtValor, txtQtdParcelas;
@@ -30,8 +31,12 @@ public class MainController {
     public void initialize() {
         // Inicializa valores padrão (No Android seria o onCreate)
         dpData.setValue(LocalDate.now());
+
+        // Categorias fixas por enquanto
         cbCategoria.getItems().addAll("Alimentação", "Lazer", "Contas Fixas", "Saúde");
-        cbMetodo.getItems().addAll("Nubank", "Santander", "Dinheiro");
+
+        // BUSCA DINÂMICA: Carrega o que estiver no SQLite
+        carregarMetodosNoCombo();
     }
 
     @FXML
@@ -82,8 +87,13 @@ public class MainController {
             // 3. Define como Modal (bloqueia a janela de trás, igual um Dialog no Android)
             stage.initModality(Modality.APPLICATION_MODAL);
 
-            stage.setScene(new Scene(root));
-            stage.show();
+            // Quando você fechar a janela de métodos, ele continua para a linha de baixo
+            stage.showAndWait();
+
+            // Atualiza o ComboBox para mostrar o cartão que acabou de ser criado!
+            carregarMetodosNoCombo();
+
+
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -91,5 +101,20 @@ public class MainController {
     @FXML
     private void abrirCadastroCategorias() {
         System.out.println("Abrindo tela de Categorias...");
+    }
+
+    private void carregarMetodosNoCombo() {
+        cbMetodo.getItems().clear();
+
+        // Buscamos a lista do banco através do repositório
+        List<MetodoPagamento> metodosDoBanco = repository.buscarTodosMetodos();
+
+        if (metodosDoBanco.isEmpty()) {
+            cbMetodo.setPromptText("Cadastre um cartão no menu");
+        } else {
+            for (MetodoPagamento m : metodosDoBanco) {
+                cbMetodo.getItems().add(m.getNome());
+            }
+        }
     }
 }
