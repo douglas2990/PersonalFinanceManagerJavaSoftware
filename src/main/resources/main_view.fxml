@@ -59,6 +59,12 @@
 
         <Label text="Últimos Lançamentos" style="-fx-font-weight: bold;"/>
 
+        <HBox spacing="15" alignment="CENTER_LEFT">
+            <Label text="Filtrar por Período:" style="-fx-font-weight: bold;"/>
+            <ComboBox fx:id="cbFiltroMes" prefWidth="150" promptText="Selecione o Mês"/>
+            <Spinner fx:id="spFiltroAno" prefWidth="80" editable="true"/>
+        </HBox>
+
         <TableView fx:id="tableGastos" prefHeight="300.0" VBox.vgrow="ALWAYS">
             <columns>
                 <TableColumn fx:id="colData" text="Data" prefWidth="90"/>

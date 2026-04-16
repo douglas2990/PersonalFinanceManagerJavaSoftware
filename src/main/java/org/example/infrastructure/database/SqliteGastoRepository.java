@@ -89,23 +89,7 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
              ResultSet rs = stmt.executeQuery(sql)) {
 
             while (rs.next()) {
-                String dataString = rs.getString("data");
-                LocalDate dataFinal = LocalDate.parse(dataString);
-
-                // AJUSTE: Criamos o objeto Categoria a partir da string do banco
-                Categoria cat = new Categoria(rs.getString("categoria"));
-
-                Gasto gasto = new Gasto(
-                        rs.getString("descricao"),
-                        rs.getDouble("valor"),
-                        dataFinal,
-                        cat, // Passando o objeto Categoria
-                        new MetodoPagamento(rs.getString("metodo"), 0),
-                        false,
-                        rs.getInt("total_parcelas"),
-                        rs.getInt("parcela_atual")
-                );
-                lista.add(gasto);
+                lista.add(converterParaGasto(rs)); // Apenas uma linha aqui!
             }
         } catch (SQLException e) {
             System.out.println("Erro ao buscar gastos: " + e.getMessage());
@@ -113,10 +97,6 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
         return lista;
     }
 
-    @Override
-    public List<Gasto> buscarPorMesEAno(int mes, int ano) {
-        return new ArrayList<>();
-    }
 
     // --- MÉTODOS DE PAGAMENTO ---
 
@@ -182,5 +162,49 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
             System.out.println("Erro ao buscar categorias: " + e.getMessage());
         }
         return lista;
+    }
+
+    @Override
+    public List<Gasto> buscarPorMesEAno(int mes, int ano) {
+        List<Gasto> lista = new ArrayList<>();
+        // Filtro usando funções de data do SQLite
+        String sql = "SELECT * FROM gastos WHERE strftime('%m', data) = ? AND strftime('%Y', data) = ? ORDER BY data DESC";
+
+        try (Connection conn = DriverManager.getConnection(URL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, String.format("%02d", mes)); // Garante "04" em vez de "4"
+            pstmt.setString(2, String.valueOf(ano));
+
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                lista.add(converterParaGasto(rs));
+            }
+        } catch (SQLException e) {
+            System.out.println("Erro ao filtrar por mês: " + e.getMessage());
+        }
+        return lista;
+    }
+
+    private Gasto converterParaGasto(ResultSet rs) throws SQLException {
+        String dataString = rs.getString("data");
+        LocalDate dataFinal = LocalDate.parse(dataString);
+
+        // Criamos os objetos de valor a partir das strings/dados do banco
+        Categoria categoria = new Categoria(rs.getString("categoria"));
+
+        // Para o método de pagamento, inicializamos com o nome vindo do banco
+        MetodoPagamento metodo = new MetodoPagamento(rs.getString("metodo"), 0);
+
+        return new Gasto(
+                rs.getString("descricao"),
+                rs.getDouble("valor"),
+                dataFinal,
+                categoria,
+                metodo,
+                false, // isMensal (pode ser ajustado se você tiver essa coluna)
+                rs.getInt("total_parcelas"),
+                rs.getInt("parcela_atual")
+        );
     }
 }

@@ -25,7 +25,8 @@ public class MainController {
 
     // AJUSTE: ComboBox agora é de Categoria
     @FXML private ComboBox<Categoria> cbCategoria;
-    @FXML private ComboBox<String> cbMetodo;
+    @FXML private ComboBox<String> cbMetodo,cbFiltroMes;
+    @FXML private Spinner<Integer> spFiltroAno;
 
     @FXML private CheckBox chkParcelado;
     @FXML private HBox containerParcelas;
@@ -39,6 +40,25 @@ public class MainController {
     @FXML
     public void initialize() {
         dpData.setValue(LocalDate.now());
+
+        // Preenche meses
+        cbFiltroMes.getItems().addAll(
+                "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+                "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+        );
+
+        // Configura o ano (de 2020 a 2030, começando no ano atual)
+        int anoAtual = LocalDate.now().getYear();
+        spFiltroAno.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(2020, 2030, anoAtual));
+
+        // Seleciona o mês atual por padrão
+        cbFiltroMes.getSelectionModel().select(LocalDate.now().getMonthValue() - 1);
+
+        // ESCUTADORES (Listeners): Quando mudar o combo ou o ano, atualiza a tabela
+        cbFiltroMes.setOnAction(e -> atualizarTabela());
+        spFiltroAno.valueProperty().addListener((obs, oldVal, newVal) -> atualizarTabela());
+
+
         configurarTabela();
         carregarCategoriasNoCombo();
         carregarMetodosNoCombo();
@@ -108,8 +128,16 @@ public class MainController {
 
     private void atualizarTabela() {
         tableGastos.getItems().clear();
-        tableGastos.getItems().addAll(repository.buscarTodos());
-        atualizarTotal();
+
+        // Pegamos os valores dos filtros
+        int mes = cbFiltroMes.getSelectionModel().getSelectedIndex() + 1;
+        int ano = spFiltroAno.getValue();
+
+        // Chamamos a função do banco que você já preparou (buscarPorMesEAno)
+        List<Gasto> lista = repository.buscarPorMesEAno(mes, ano);
+
+        tableGastos.getItems().addAll(lista);
+        atualizarTotal(); // O total agora será apenas do mês filtrado!
     }
 
     private void atualizarTotal() {
