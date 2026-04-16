@@ -6,6 +6,7 @@ import org.example.domain.repository.GastoRepository;
 import org.example.domain.repository.MetodoRepository;
 
 import java.sql.*;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -81,16 +82,16 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
              ResultSet rs = stmt.executeQuery(sql)) {
 
             while (rs.next()) {
-                // Criamos um método temporário só para preencher o objeto Gasto
-                MetodoPagamento mp = new MetodoPagamento(rs.getString("metodo"), 0);
+                String dataString = rs.getString("data");
+                LocalDate dataFinal = LocalDate.parse(dataString); // Garante que a String vire objeto data
 
                 Gasto gasto = new Gasto(
-                        rs.getString("descricao"),
+                        rs.getString("descricao"), // Verifique se o nome da coluna no banco é exatamente 'descricao'
                         rs.getDouble("valor"),
-                        java.time.LocalDate.parse(rs.getString("data")),
+                        dataFinal,
                         rs.getString("categoria"),
-                        mp,
-                        false, // simplificando parcelado para a listagem inicial
+                        new MetodoPagamento(rs.getString("metodo"), 0),
+                        false,
                         rs.getInt("total_parcelas"),
                         rs.getInt("parcela_atual")
                 );
