@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.control.*?>
 <?import javafx.geometry.Insets?>
 
-<VBox spacing="15" prefWidth="700.0" prefHeight="500.0" xmlns="http://javafx.com/javafx/8"
+<VBox spacing="15" prefWidth="850.0" prefHeight="550.0" xmlns="http://javafx.com/javafx/8"
       xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="org.example.infrastructure.ui.DashboardController">
 
@@ -20,9 +19,7 @@
                 <Spinner fx:id="spAno" prefWidth="80"/>
             </HBox>
         </VBox>
-
         <Region HBox.hgrow="ALWAYS" />
-
         <VBox alignment="CENTER_RIGHT">
             <Label text="Balanço Geral:" style="-fx-font-size: 14px;"/>
             <Label fx:id="lblStatusGeral" text="R$ 0,00" style="-fx-font-weight: bold; -fx-font-size: 20px;"/>
@@ -33,21 +30,25 @@
 
     <TableView fx:id="tableResumo" VBox.vgrow="ALWAYS">
         <columns>
-            <TableColumn fx:id="colCategoria" text="Categoria" prefWidth="150"/>
-            <TableColumn fx:id="colMeta" text="Meta (Planejado)" prefWidth="120"/>
-            <TableColumn fx:id="colGasto" text="Gasto (Realizado)" prefWidth="120"/>
-            <TableColumn fx:id="colSaldo" text="Diferença" prefWidth="120"/>
-            <TableColumn fx:id="colStatus" text="Status" prefWidth="130"/>
+            <TableColumn fx:id="colCategoria" text="Categoria" prefWidth="130"/>
+            <TableColumn fx:id="colMeta" text="Meta (Mês)" prefWidth="110"/>
+            <TableColumn fx:id="colGasto" text="Gasto (Mês)" prefWidth="110"/>
+            <TableColumn fx:id="colSaldo" text="Diferença" prefWidth="110"/>
+            <TableColumn fx:id="colAcumulado" text="Balanço Total" prefWidth="120"/>
+            <TableColumn fx:id="colStatus" text="Status" prefWidth="110"/>
         </columns>
     </TableView>
 
     <HBox spacing="10" alignment="CENTER_RIGHT">
-        <Button text="Definir Meta Fixa (Anual)" onAction="#abrirPlanejamentoAnual"
-                style="-fx-background-color: #34495e; -fx-text-fill: white; -fx-font-weight: bold;"/>
+        <Button text="Exportar Excel" onAction="#exportarGeralExcel"
+                style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold;"/>
 
-        <Button text="Definir Meta Mensal" onAction="#abrirDefinirMetas"
+        <Region HBox.hgrow="ALWAYS" />
+
+        <Button text="Meta Anual" onAction="#abrirPlanejamentoAnual"
+                style="-fx-background-color: #34495e; -fx-text-fill: white; -fx-font-weight: bold;"/>
+        <Button text="Meta Mensal" onAction="#abrirDefinirMetas"
                 style="-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-weight: bold;"/>
         <Button text="Fechar" onAction="#fecharJanela" />
     </HBox>
-
 </VBox>

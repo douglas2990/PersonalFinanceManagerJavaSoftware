@@ -314,4 +314,22 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
             System.out.println("❌ Erro ao salvar meta anual: " + e.getMessage());
         }
     }
+
+    public double buscarSomaGastosPorCategoria(String nomeCategoria, int mes, int ano) {
+        String sql = "SELECT SUM(valor) as total FROM gastos WHERE categoria = ? AND strftime('%m', data) = ? AND strftime('%Y', data) = ?";
+        try (Connection conn = DriverManager.getConnection(URL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, nomeCategoria);
+            pstmt.setString(2, String.format("%02d", mes));
+            pstmt.setString(3, String.valueOf(ano));
+
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getDouble("total");
+            }
+        } catch (SQLException e) {
+            System.err.println("Erro ao somar gastos: " + e.getMessage());
+        }
+        return 0.0;
+    }
 }

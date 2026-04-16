@@ -7,8 +7,12 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.paint.Color;
+import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import java.io.FileOutputStream;
 import org.example.domain.entity.Categoria;
 import org.example.domain.entity.ResumoCategoria;
 import org.example.infrastructure.database.SqliteGastoRepository;
@@ -26,6 +30,7 @@ public class DashboardController {
     @FXML private Spinner<Integer> spAno;
     @FXML private Label lblStatusGeral;
     @FXML private TableView<ResumoCategoria> tableResumo;
+    @FXML private TableColumn<ResumoCategoria, String> colAcumulado;
     @FXML private TableColumn<ResumoCategoria, String> colCategoria, colMeta, colGasto, colSaldo, colStatus;
 
     private final SqliteGastoRepository repository = new SqliteGastoRepository();
@@ -56,37 +61,36 @@ public class DashboardController {
         colGasto.setCellValueFactory(d -> new SimpleStringProperty(String.format("R$ %.2f", d.getValue().getRealizado())));
         colSaldo.setCellValueFactory(d -> new SimpleStringProperty(String.format("R$ %.2f", d.getValue().getSaldo())));
         colStatus.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().getStatus()));
+        colAcumulado.setCellValueFactory(d -> new javafx.beans.property.SimpleStringProperty(
+                String.format("R$ %.2f", d.getValue().getSaldoAcumulado())
+        ));
     }
 
     private void atualizarDashboard() {
-        int mes = cbMes.getSelectionModel().getSelectedIndex() + 1;
+        int mesSelecionado = cbMes.getSelectionModel().getSelectedIndex() + 1;
         int ano = spAno.getValue();
-
         List<ResumoCategoria> resumos = new ArrayList<>();
-        double totalSaldoGeral = 0;
 
-        // 1. Pegamos todas as categorias cadastradas
         List<Categoria> categorias = repository.buscarTodasCategorias();
 
         for (Categoria cat : categorias) {
-            // 2. Buscamos a meta definida para essa categoria/mês
-            double meta = repository.buscarMetaFinal(cat.getNome(), mes, ano);
+            // 1. Dados do Mês Atual (o que já tínhamos)
+            double metaAtual = repository.buscarMetaFinal(cat.getNome(), mesSelecionado, ano);
+            double realizadoAtual = calcularGastoMes(cat.getNome(), mesSelecionado, ano);
 
-            // 3. Calculamos o quanto já foi gasto (realizado)
-            double realizado = repository.buscarTodos().stream()
-                    .filter(g -> g.getCategoria().getNome().equals(cat.getNome()) &&
-                            g.getData().getMonthValue() == mes &&
-                            g.getData().getYear() == ano)
-                    .mapToDouble(g -> g.getValor())
-                    .sum();
+            // 2. CÁLCULO DO BALANÇO ACUMULADO (Janeiro até o Mês Selecionado)
+            double saldoAcumulado = 0;
+            for (int m = 1; m <= mesSelecionado; m++) {
+                double metaM = repository.buscarMetaFinal(cat.getNome(), m, ano);
+                double gastoM = calcularGastoMes(cat.getNome(), m, ano);
+                saldoAcumulado += (metaM - gastoM);
+            }
 
-            ResumoCategoria resumo = new ResumoCategoria(cat.getNome(), meta, realizado);
+            // Criamos o objeto de resumo (adicione o campo saldoAcumulado na sua classe ResumoCategoria)
+            ResumoCategoria resumo = new ResumoCategoria(cat.getNome(), metaAtual, realizadoAtual, saldoAcumulado);
             resumos.add(resumo);
-            totalSaldoGeral += resumo.getSaldo();
         }
-
         tableResumo.getItems().setAll(resumos);
-        atualizarLabelStatus(totalSaldoGeral);
     }
 
     private void atualizarLabelStatus(double saldo) {
@@ -155,4 +159,55 @@ public class DashboardController {
             e.printStackTrace();
         }
     }
+
+    @FXML
+    private void exportarGeralExcel() {
+        int mesSelecionado = cbMes.getSelectionModel().getSelectedIndex() + 1;
+        int ano = spAno.getValue();
+        String nomeMes = cbMes.getSelectionModel().getSelectedItem();
+
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Exportar Relatório Financeiro");
+        fileChooser.setInitialFileName("Relatorio_Financeiro_" + nomeMes + "_" + ano + ".xlsx");
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Excel Files", "*.xlsx"));
+
+        java.io.File file = fileChooser.showSaveDialog(tableResumo.getScene().getWindow());
+
+        if (file != null) {
+            try (Workbook workbook = new XSSFWorkbook()) {
+                Sheet sheet = workbook.createSheet("Resumo");
+                Row headerRow = sheet.createRow(0);
+
+                // Cabeçalhos
+                String[] colunas = {"Categoria", "Meta", "Gasto", "Saldo", "Acumulado"};
+                for (int i = 0; i < colunas.length; i++) {
+                    headerRow.createCell(i).setCellValue(colunas[i]);
+                }
+
+                int rowNum = 1;
+                for (ResumoCategoria item : tableResumo.getItems()) {
+                    Row row = sheet.createRow(rowNum++);
+                    row.createCell(0).setCellValue(item.getCategoria());
+                    row.createCell(1).setCellValue(item.getPlanejado()); // Getters da sua Entity
+                    row.createCell(2).setCellValue(item.getRealizado());
+                    row.createCell(3).setCellValue(item.getSaldo());
+                    row.createCell(4).setCellValue(item.getSaldoAcumulado());
+                }
+
+                try (FileOutputStream fileOut = new FileOutputStream(file)) {
+                    workbook.write(fileOut);
+                }
+                System.out.println("✅ Relatório exportado com sucesso!");
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private double calcularGastoMes(String categoria, int mes, int ano) {
+        // Aqui chamamos o seu repositório que já existe
+        return repository.buscarSomaGastosPorCategoria(categoria, mes, ano);
+        //return repository.buscarGastosPorCategoria(categoria, mes, ano);
+    }
+
 }
