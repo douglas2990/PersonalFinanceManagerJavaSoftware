@@ -1,13 +1,14 @@
 package org.example.infrastructure.ui;
 
 import javafx.fxml.FXML;
-import javafx.scene.control.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 import org.example.domain.entity.Categoria;
 import org.example.infrastructure.database.SqliteGastoRepository;
 
 import java.time.LocalDate;
-import java.util.List;
 
 public class DefinirMetasController {
 

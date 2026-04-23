@@ -6,13 +6,28 @@ import org.example.domain.entity.MetodoPagamento;
 import org.example.domain.repository.GastoRepository;
 import org.example.domain.repository.MetodoRepository;
 
+import java.io.File;
 import java.sql.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
 public class SqliteGastoRepository implements GastoRepository, MetodoRepository {
-    private static final String URL = "jdbc:sqlite:financas.db";
+    //private static final String URL = "jdbc:sqlite:financas.db";
+    private static String URL ;
+
+    static {
+        // Define o caminho: C:\Users\Nome\Documents\MinhasFinancas\
+        String path = System.getProperty("user.home") + File.separator + "Documents" + File.separator + "MinhasFinancas";
+        File directory = new File(path);
+
+        if (!directory.exists()) {
+            directory.mkdirs(); // Cria a pasta se ela não existir
+        }
+
+        URL = "jdbc:sqlite:" + path + File.separator + "financas.db";
+        System.out.println("Banco em: " + URL);
+    }
 
     public SqliteGastoRepository() {
         initDatabase();
