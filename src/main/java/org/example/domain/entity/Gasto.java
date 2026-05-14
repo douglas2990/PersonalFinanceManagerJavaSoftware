@@ -3,6 +3,7 @@ package org.example.domain.entity;
 import java.time.LocalDate;
 
 public class Gasto {
+    private int id;
     private String descricao;
     private double valor;
     private LocalDate data;
@@ -13,6 +14,10 @@ public class Gasto {
     private int parcelaAtual;
 
     // Getters e Setters
+    public int getId() { return id; }
+    public void setId(int id) { this.id = id; }
+
+
     public String getDescricao() { return descricao; }
     public void setDescricao(String descricao) { this.descricao = descricao; }
 
@@ -38,6 +43,19 @@ public class Gasto {
     public void setParcelaAtual(int parcelaAtual) { this.parcelaAtual = parcelaAtual; }
 
     // CONSTRUTOR ATUALIZADO (Atenção para o tipo Categoria aqui)
+    public Gasto(int id,String descricao, double valor, LocalDate data, Categoria categoria,
+                 MetodoPagamento metodo, boolean isMensal, int totalParcelas, int parcelaAtual) {
+        this.id = id;
+        this.descricao = descricao;
+        this.valor = valor;
+        this.data = data;
+        this.categoria = categoria; // Agora aceita o objeto sem erro
+        this.metodo = metodo;
+        this.isMensal = isMensal;
+        this.totalParcelas = totalParcelas;
+        this.parcelaAtual = parcelaAtual;
+    }
+    // Construtor para NOVOS gastos (sem ID ainda)
     public Gasto(String descricao, double valor, LocalDate data, Categoria categoria,
                  MetodoPagamento metodo, boolean isMensal, int totalParcelas, int parcelaAtual) {
         this.descricao = descricao;

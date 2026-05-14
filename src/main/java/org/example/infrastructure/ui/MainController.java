@@ -6,6 +6,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.layout.HBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
@@ -32,6 +33,7 @@ public class MainController {
     @FXML private HBox containerParcelas;
     @FXML private TableView<Gasto> tableGastos;
     @FXML private TableColumn<Gasto, String> colData, colDescricao,colCategoria, colValor, colMetodo;
+    @FXML private TableColumn<Gasto, Void> colAcoes;
     @FXML private Label lblTotal;
 
     private final SqliteGastoRepository repository = new SqliteGastoRepository();
@@ -63,22 +65,65 @@ public class MainController {
         carregarCategoriasNoCombo();
         carregarMetodosNoCombo();
         atualizarTabela();
+
     }
 
     private void configurarTabela() {
-        colData.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getData().toString()));
-        colDescricao.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getDescricao()));
+        tableGastos.setEditable(true);
 
-        // Valor formatado com R$
+        // 1. Configuração de Células e Fábricas de Valor
+        colData.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getData().toString()));
+
+        colDescricao.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getDescricao()));
+        colDescricao.setCellFactory(TextFieldTableCell.forTableColumn());
+        colDescricao.setOnEditCommit(event -> {
+            Gasto g = event.getRowValue();
+            g.setDescricao(event.getNewValue());
+            repository.atualizarGasto(g);
+        });
+
         colValor.setCellValueFactory(cellData ->
                 new SimpleStringProperty(String.format("R$ %.2f", cellData.getValue().getValor())));
+        colValor.setStyle("-fx-alignment: CENTER-RIGHT;");
 
         colMetodo.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getMetodo().getNome()));
 
         colCategoria.setCellValueFactory(cellData ->
                 new SimpleStringProperty(cellData.getValue().getCategoria().getNome()));
-        // Alinhamento profissional para valores financeiros
-        colValor.setStyle("-fx-alignment: CENTER-RIGHT;");
+
+        // 2. Configuração da Coluna de Ações (Usando a colAcoes do FXML)
+        colAcoes.setCellFactory(param -> new TableCell<>() {
+            private final Button btn = new Button("❌"); // Ou "Excluir"
+            {
+                btn.setStyle("-fx-background-color: transparent; -fx-text-fill: #e74c3c; -fx-cursor: hand; -fx-font-weight: bold;");
+                btn.setOnAction(event -> {
+                    Gasto gasto = getTableView().getItems().get(getIndex());
+                    confirmarExclusao(gasto);
+                });
+            }
+
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty) {
+                    setGraphic(null);
+                } else {
+                    setGraphic(btn);
+                }
+            }
+        });
+    }
+
+    private void confirmarExclusao(Gasto gasto) {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Confirmar Exclusão");
+        alert.setHeaderText("Remover lançamento?");
+        alert.setContentText("Deseja excluir: " + gasto.getDescricao() + "?");
+
+        if (alert.showAndWait().get() == ButtonType.OK) {
+            repository.removerGasto(gasto.getId()); // Use o ID que vem do banco
+            atualizarTabela();
+        }
     }
 
     private void carregarCategoriasNoCombo() {
@@ -204,6 +249,36 @@ public class MainController {
         } catch (IOException e) {
             e.printStackTrace();
             System.err.println("Erro ao abrir o Dashboard: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    private void abrirTabelaExpandida() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/tabela_expandida_view.fxml"));
+            Parent root = loader.load();
+
+            TabelaExpandidaController expandedController = loader.getController();
+
+            // 1. Pegamos os valores atuais dos filtros da Main
+            String mesSelecionado = cbFiltroMes.getValue();
+            int anoSelecionado = spFiltroAno.getValue();
+
+            // 2. Chamamos a nova função que configura os filtros e carrega os dados no banco
+            // Note que mudamos de 'inicializarDados' para 'configurarInicial'
+            expandedController.configurarInicial(mesSelecionado, anoSelecionado);
+
+            Stage stage = new Stage();
+            stage.setTitle("Relatório Detalhado - Oliveira");
+            stage.setScene(new Scene(root));
+
+            // Mantemos o modo tela cheia para o efeito de "zoom"
+            stage.setMaximized(true);
+            stage.show();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.err.println("Erro ao abrir a visualização expandida: " + e.getMessage());
         }
     }
 }

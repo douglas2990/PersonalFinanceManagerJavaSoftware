@@ -68,6 +68,11 @@
                     style="-fx-background-color: #34495e; -fx-text-fill: white; -fx-font-weight: bold;"/>
         </HBox>
 
+        <HBox spacing="10" alignment="CENTER_RIGHT">
+            <Button text="⛶ Ver em Tela Cheia" onAction="#abrirTabelaExpandida"
+                    style="-fx-background-color: transparent; -fx-text-fill: #34495e; -fx-cursor: hand;"/>
+        </HBox>
+
         <TableView fx:id="tableGastos" prefHeight="300.0" VBox.vgrow="ALWAYS">
             <columns>
                 <TableColumn fx:id="colData" text="Data" prefWidth="90"/>
@@ -75,6 +80,7 @@
                 <TableColumn fx:id="colCategoria" text="Categoria" prefWidth="120"/>
                 <TableColumn fx:id="colValor" text="Valor" prefWidth="80"/>
                 <TableColumn fx:id="colMetodo" text="Pagamento" prefWidth="100"/>
+                <TableColumn fx:id="colAcoes" text="Ações" prefWidth="60" />
             </columns>
         </TableView>
         <HBox alignment="CENTER_RIGHT" spacing="10">

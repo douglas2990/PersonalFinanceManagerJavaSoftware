@@ -225,6 +225,7 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
     }
 
     private Gasto converterParaGasto(ResultSet rs) throws SQLException {
+        int id = rs.getInt("id");
         String dataString = rs.getString("data");
         LocalDate dataFinal = LocalDate.parse(dataString);
 
@@ -235,6 +236,7 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
         MetodoPagamento metodo = new MetodoPagamento(rs.getString("metodo"), 0);
 
         return new Gasto(
+                id,
                 rs.getString("descricao"),
                 rs.getDouble("valor"),
                 dataFinal,
@@ -346,5 +348,29 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
             System.err.println("Erro ao somar gastos: " + e.getMessage());
         }
         return 0.0;
+    }
+    public void removerGasto(int id) {
+        String sql = "DELETE FROM gastos WHERE id = ?";
+        try (Connection conn = DriverManager.getConnection(URL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, id);
+            pstmt.executeUpdate();
+            System.out.println("✅ Gasto removido com sucesso!");
+        } catch (SQLException e) {
+            System.err.println("❌ Erro ao remover gasto: " + e.getMessage());
+        }
+    }
+    public void atualizarGasto(Gasto gasto) {
+        String sql = "UPDATE gastos SET descricao = ?, valor = ?, data = ? WHERE id = ?";
+        try (Connection conn = DriverManager.getConnection(URL);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, gasto.getDescricao());
+            pstmt.setDouble(2, gasto.getValor());
+            pstmt.setString(3, gasto.getData().toString());
+            pstmt.setInt(4, gasto.getId());
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            System.err.println("Erro ao atualizar: " + e.getMessage());
+        }
     }
 }
