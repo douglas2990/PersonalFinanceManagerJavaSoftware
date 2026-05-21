@@ -21,8 +21,11 @@
 
         <Region HBox.hgrow="ALWAYS" />
 
+        <Button text="Exportar Excel" onAction="#exportarParaExcel"
+                style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 20; -fx-cursor: hand; -fx-background-radius: 5;"/>
+
         <Button text="Dashboard de Metas" onAction="#abrirDashboard"
-                style="-fx-background-color: #34495e; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 20; -fx-cursor: hand;"/>
+                style="-fx-background-color: #34495e; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 20; -fx-cursor: hand; -fx-background-radius: 5;"/>
     </HBox>
 
     <TableView fx:id="tableGastosFull" VBox.vgrow="ALWAYS" style="-fx-background-radius: 10;">

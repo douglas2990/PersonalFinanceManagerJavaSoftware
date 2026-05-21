@@ -77,6 +77,67 @@ public class TabelaExpandidaController {
     }
 
     @FXML
+    private void exportarParaExcel() {
+        try {
+            List<Gasto> listaParaExportar = tableGastosFull.getItems();
+
+            if (listaParaExportar.isEmpty()) {
+                Alert alert = new Alert(Alert.AlertType.WARNING, "Não há dados para exportar!", ButtonType.OK);
+                alert.showAndWait();
+                return;
+            }
+
+            javafx.stage.FileChooser fileChooser = new javafx.stage.FileChooser();
+            fileChooser.setTitle("Salvar Relatório Excel");
+            fileChooser.getExtensionFilters().add(new javafx.stage.FileChooser.ExtensionFilter("Arquivo Excel (*.xlsx)", "*.xlsx"));
+            fileChooser.setInitialFileName("Relatorio_Financas.xlsx");
+
+            java.io.File file = fileChooser.showSaveDialog(tableGastosFull.getScene().getWindow());
+
+            if (file != null) {
+                // Criação do Excel usando Apache POI diretamente
+                org.apache.poi.ss.usermodel.Workbook workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook();
+                org.apache.poi.ss.usermodel.Sheet sheet = workbook.createSheet("Gastos");
+
+                // Cabeçalho
+                org.apache.poi.ss.usermodel.Row headerRow = sheet.createRow(0);
+                String[] colunas = {"Data", "Descrição", "Categoria", "Valor", "Pagamento"};
+                for (int i = 0; i < colunas.length; i++) {
+                    org.apache.poi.ss.usermodel.Cell cell = headerRow.createCell(i);
+                    cell.setCellValue(colunas[i]);
+                }
+
+                // Dados
+                int rowNum = 1;
+                for (Gasto g : listaParaExportar) {
+                    org.apache.poi.ss.usermodel.Row row = sheet.createRow(rowNum++);
+                    row.createCell(0).setCellValue(g.getData().toString());
+                    row.createCell(1).setCellValue(g.getDescricao());
+                    row.createCell(2).setCellValue(g.getCategoria().getNome());
+                    row.createCell(3).setCellValue(g.getValor());
+                    row.createCell(4).setCellValue(g.getMetodo().getNome());
+                }
+
+                // Auto-ajuste de colunas
+                for (int i = 0; i < colunas.length; i++) {
+                    sheet.autoSizeColumn(i);
+                }
+
+                try (java.io.FileOutputStream fileOut = new java.io.FileOutputStream(file)) {
+                    workbook.write(fileOut);
+                }
+                workbook.close();
+
+                Alert alert = new Alert(Alert.AlertType.INFORMATION, "✅ Excel gerado com sucesso!", ButtonType.OK);
+                alert.showAndWait();
+            }
+        } catch (Exception e) {
+            System.err.println("❌ Erro ao exportar para Excel: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    @FXML
     private void abrirDashboard() {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/dashboard_view.fxml"));
