@@ -1,9 +1,12 @@
 package org.example.domain.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.time.LocalDate;
 
 public class Gasto {
     private int id;
+    //@JsonProperty("descricao")
     private String descricao;
     private double valor;
     private LocalDate data;
@@ -49,7 +52,7 @@ public class Gasto {
         this.descricao = descricao;
         this.valor = valor;
         this.data = data;
-        this.categoria = categoria; // Agora aceita o objeto sem erro
+        this.categoria = categoria;
         this.metodo = metodo;
         this.isMensal = isMensal;
         this.totalParcelas = totalParcelas;
@@ -61,7 +64,7 @@ public class Gasto {
         this.descricao = descricao;
         this.valor = valor;
         this.data = data;
-        this.categoria = categoria; // Agora aceita o objeto sem erro
+        this.categoria = categoria;
         this.metodo = metodo;
         this.isMensal = isMensal;
         this.totalParcelas = totalParcelas;

@@ -1,6 +1,6 @@
 package org.example.infrastructure.database;
 
-import org.example.domain.entity.Categoria; // Importante importar a nova Entity
+import org.example.domain.entity.Categoria;
 import org.example.domain.entity.Gasto;
 import org.example.domain.entity.MetodoPagamento;
 import org.example.domain.repository.GastoRepository;
@@ -13,20 +13,34 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SqliteGastoRepository implements GastoRepository, MetodoRepository {
-    //private static final String URL = "jdbc:sqlite:financas.db";
-    private static String URL ;
 
-    static {
-        // Define o caminho: C:\Users\Nome\Documents\MinhasFinancas\
-        String path = System.getProperty("user.home") + File.separator + "Documents" + File.separator + "MinhasFinancas";
-        File directory = new File(path);
+    // Método centralizado que descobre dinamicamente onde o banco está guardado
+    private String obterUrlConexao() {
+        java.util.Properties props = new java.util.Properties();
+        File configFile = new File("config.properties");
+        String caminhoDb = "";
 
-        if (!directory.exists()) {
-            directory.mkdirs(); // Cria a pasta se ela não existir
+        if (configFile.exists()) {
+            try (java.io.FileInputStream in = new java.io.FileInputStream(configFile)) {
+                props.load(in);
+                caminhoDb = props.getProperty("database.path");
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
 
-        URL = "jdbc:sqlite:" + path + File.separator + "financas.db";
-        System.out.println("Banco em: " + URL);
+        // Fallback: se o arquivo não existir (ou antes do primeiro start), usa o padrão
+        if (caminhoDb == null || caminhoDb.isEmpty()) {
+            caminhoDb = System.getProperty("user.home") + File.separator + "Documents" + File.separator + "MinhasFinancas" + File.separator + "financas.db";
+            new File(caminhoDb).getParentFile().mkdirs();
+        }
+
+        return "jdbc:sqlite:" + caminhoDb;
+    }
+
+    // Gerenciador oficial de conexões da classe
+    private Connection getConnection() throws SQLException {
+        return DriverManager.getConnection(obterUrlConexao());
     }
 
     public SqliteGastoRepository() {
@@ -34,7 +48,8 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
     }
 
     private void initDatabase() {
-        try (Connection conn = DriverManager.getConnection(URL)) {
+        // AJUSTADO: Agora usa o getConnection() dinâmico
+        try (Connection conn = getConnection()) {
             if (conn != null) {
                 Statement stmt = conn.createStatement();
 
@@ -60,14 +75,13 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
                         "nome TEXT NOT NULL UNIQUE" +
                         ");";
 
-                // Tabela de Metas por Categoria e Mês
                 String sqlMetas = "CREATE TABLE IF NOT EXISTS metas_categoria (" +
                         "id INTEGER PRIMARY KEY AUTOINCREMENT," +
-                        "nome_categoria TEXT NOT NULL," + // Usando o nome para simplificar o JOIN com seus gastos atuais
+                        "nome_categoria TEXT NOT NULL," +
                         "mes INTEGER NOT NULL," +
                         "ano INTEGER NOT NULL," +
                         "valor_meta REAL NOT NULL," +
-                        "UNIQUE(nome_categoria, mes, ano)" + // Impede metas duplicadas para o mesmo mês/categoria
+                        "UNIQUE(nome_categoria, mes, ano)" +
                         ");";
 
                 String sqlMetaAnual = "CREATE TABLE IF NOT EXISTS metas_anuais (" +
@@ -78,14 +92,11 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
                         "UNIQUE(nome_categoria, ano)" +
                         ");";
 
-
-
                 stmt.execute(sqlGastos);
                 stmt.execute(sqlMetodos);
                 stmt.execute(sqlCategorias);
                 stmt.execute(sqlMetas);
                 stmt.execute(sqlMetaAnual);
-
             }
         } catch (SQLException e) {
             System.out.println("Erro ao iniciar banco: " + e.getMessage());
@@ -98,15 +109,13 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
     public void salvar(Gasto gasto) {
         String sql = "INSERT INTO gastos(descricao, valor, data, categoria, metodo, total_parcelas, parcela_atual) VALUES(?,?,?,?,?,?,?)";
 
-        try (Connection conn = DriverManager.getConnection(URL);
+        // AJUSTADO: Usando getConnection()
+        try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, gasto.getDescricao());
             pstmt.setDouble(2, gasto.getValor());
             pstmt.setString(3, gasto.getData().toString());
-
-            // AJUSTE: Pegamos o nome do objeto Categoria
             pstmt.setString(4, gasto.getCategoria().getNome());
-
             pstmt.setString(5, gasto.getMetodo().getNome());
             pstmt.setInt(6, gasto.getTotalParcelas());
             pstmt.setInt(7, gasto.getParcelaAtual());
@@ -122,12 +131,13 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
         List<Gasto> lista = new ArrayList<>();
         String sql = "SELECT * FROM gastos ORDER BY data DESC";
 
-        try (Connection conn = DriverManager.getConnection(URL);
+        // AJUSTADO: Usando getConnection()
+        try (Connection conn = getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
 
             while (rs.next()) {
-                lista.add(converterParaGasto(rs)); // Apenas uma linha aqui!
+                lista.add(converterParaGasto(rs));
             }
         } catch (SQLException e) {
             System.out.println("Erro ao buscar gastos: " + e.getMessage());
@@ -135,13 +145,13 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
         return lista;
     }
 
-
     // --- MÉTODOS DE PAGAMENTO ---
 
     @Override
     public void salvarMetodo(MetodoPagamento metodo) {
         String sql = "INSERT INTO metodos_pagamento(nome, dia_vencimento) VALUES(?,?)";
-        try (Connection conn = DriverManager.getConnection(URL);
+        // AJUSTADO: Usando getConnection()
+        try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, metodo.getNome());
             pstmt.setInt(2, metodo.getDiaVencimento());
@@ -157,7 +167,8 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
         List<MetodoPagamento> lista = new ArrayList<>();
         String sql = "SELECT nome, dia_vencimento FROM metodos_pagamento";
 
-        try (Connection conn = DriverManager.getConnection(URL);
+        // AJUSTADO: Usando getConnection()
+        try (Connection conn = getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
 
@@ -177,7 +188,8 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
 
     public void salvarCategoria(Categoria categoria) {
         String sql = "INSERT INTO categorias(nome) VALUES(?)";
-        try (Connection conn = DriverManager.getConnection(URL);
+        // AJUSTADO: Usando getConnection()
+        try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, categoria.getNome());
             pstmt.executeUpdate();
@@ -190,7 +202,8 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
     public List<Categoria> buscarTodasCategorias() {
         List<Categoria> lista = new ArrayList<>();
         String sql = "SELECT id, nome FROM categorias";
-        try (Connection conn = DriverManager.getConnection(URL);
+        // AJUSTADO: Usando getConnection()
+        try (Connection conn = getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
@@ -205,13 +218,13 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
     @Override
     public List<Gasto> buscarPorMesEAno(int mes, int ano) {
         List<Gasto> lista = new ArrayList<>();
-        // Filtro usando funções de data do SQLite
         String sql = "SELECT * FROM gastos WHERE strftime('%m', data) = ? AND strftime('%Y', data) = ? ORDER BY data DESC";
 
-        try (Connection conn = DriverManager.getConnection(URL);
+        // AJUSTADO: Usando getConnection()
+        try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-            pstmt.setString(1, String.format("%02d", mes)); // Garante "04" em vez de "4"
+            pstmt.setString(1, String.format("%02d", mes));
             pstmt.setString(2, String.valueOf(ano));
 
             ResultSet rs = pstmt.executeQuery();
@@ -229,10 +242,7 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
         String dataString = rs.getString("data");
         LocalDate dataFinal = LocalDate.parse(dataString);
 
-        // Criamos os objetos de valor a partir das strings/dados do banco
         Categoria categoria = new Categoria(rs.getString("categoria"));
-
-        // Para o método de pagamento, inicializamos com o nome vindo do banco
         MetodoPagamento metodo = new MetodoPagamento(rs.getString("metodo"), 0);
 
         return new Gasto(
@@ -242,21 +252,17 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
                 dataFinal,
                 categoria,
                 metodo,
-                false, // isMensal (pode ser ajustado se você tiver essa coluna)
+                false,
                 rs.getInt("total_parcelas"),
                 rs.getInt("parcela_atual")
         );
     }
-    public void definirMeta(int categoriaId, int mes, int ano, double valor) {
-        String sql = "INSERT OR REPLACE INTO metas_categoria(categoria_id, mes, ano, valor_meta) VALUES(?,?,?,?)";
-        // ... lógica do PreparedStatement ...
-    }
 
     public void salvarOuAtualizarMeta(String nomeCategoria, int mes, int ano, double valor) {
-        // O "INSERT OR REPLACE" é o segredo aqui: se já existir meta para esse mês/categoria, ele apenas atualiza o valor
         String sql = "INSERT OR REPLACE INTO metas_categoria(nome_categoria, mes, ano, valor_meta) VALUES(?,?,?,?)";
 
-        try (Connection conn = DriverManager.getConnection(URL);
+        // AJUSTADO: Usando getConnection()
+        try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, nomeCategoria);
             pstmt.setInt(2, mes);
@@ -271,7 +277,8 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
 
     public double buscarMetaPorCategoria(String nomeCategoria, int mes, int ano) {
         String sql = "SELECT valor_meta FROM metas_categoria WHERE nome_categoria = ? AND mes = ? AND ano = ?";
-        try (Connection conn = DriverManager.getConnection(URL);
+        // AJUSTADO: Usando getConnection()
+        try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, nomeCategoria);
             pstmt.setInt(2, mes);
@@ -284,25 +291,19 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
         } catch (SQLException e) {
             System.out.println("Erro ao buscar meta: " + e.getMessage());
         }
-        return 0.0; // Se não houver meta definida, retorna zero
+        return 0.0;
     }
 
-    // --- MÉTODOS DE METAS (ANUAL E MENSAL) ---
-
-    // Este é o método principal que o seu Dashboard vai chamar agora!
     public double buscarMetaFinal(String categoria, int mes, int ano) {
-        // 1. Tenta buscar a meta específica do mês
         double mensal = buscarMetaPorCategoria(categoria, mes, ano);
         if (mensal > 0) return mensal;
-
-        // 2. Se não existir, busca a meta anual padrão
         return buscarMetaAnual(categoria, ano);
     }
 
-    // Método para buscar especificamente na nova tabela de metas anuais
     public double buscarMetaAnual(String nomeCategoria, int ano) {
         String sql = "SELECT valor_padrao FROM metas_anuais WHERE nome_categoria = ? AND ano = ?";
-        try (Connection conn = DriverManager.getConnection(URL);
+        // AJUSTADO: Usando getConnection()
+        try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, nomeCategoria);
             pstmt.setInt(2, ano);
@@ -317,10 +318,10 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
         return 0.0;
     }
 
-    // Método para salvar a meta anual (para o seu novo botão de "Meta Anual")
     public void salvarOuAtualizarMetaAnual(String nomeCategoria, int ano, double valor) {
         String sql = "INSERT OR REPLACE INTO metas_anuais(nome_categoria, ano, valor_padrao) VALUES(?,?,?)";
-        try (Connection conn = DriverManager.getConnection(URL);
+        // AJUSTADO: Usando getConnection()
+        try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, nomeCategoria);
             pstmt.setInt(2, ano);
@@ -334,7 +335,8 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
 
     public double buscarSomaGastosPorCategoria(String nomeCategoria, int mes, int ano) {
         String sql = "SELECT SUM(valor) as total FROM gastos WHERE categoria = ? AND strftime('%m', data) = ? AND strftime('%Y', data) = ?";
-        try (Connection conn = DriverManager.getConnection(URL);
+        // AJUSTADO: Usando getConnection()
+        try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, nomeCategoria);
             pstmt.setString(2, String.format("%02d", mes));
@@ -349,9 +351,11 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
         }
         return 0.0;
     }
+
     public void removerGasto(int id) {
         String sql = "DELETE FROM gastos WHERE id = ?";
-        try (Connection conn = DriverManager.getConnection(URL);
+        // AJUSTADO: Usando getConnection()
+        try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, id);
             pstmt.executeUpdate();
@@ -360,9 +364,11 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
             System.err.println("❌ Erro ao remover gasto: " + e.getMessage());
         }
     }
+
     public void atualizarGasto(Gasto gasto) {
         String sql = "UPDATE gastos SET descricao = ?, valor = ?, data = ? WHERE id = ?";
-        try (Connection conn = DriverManager.getConnection(URL);
+        // AJUSTADO: Usando getConnection()
+        try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, gasto.getDescricao());
             pstmt.setDouble(2, gasto.getValor());
