@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<VBox spacing="15.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="org.example.infrastructure.ui.TabelaExpandidaController" style="-fx-background-color: #f4f7f6;">
+
+    <padding>
+        <Insets top="20" right="30" bottom="20" left="30"/>
+    </padding>
+
+    <HBox spacing="20" alignment="CENTER_LEFT" style="-fx-background-color: white; -fx-padding: 15; -fx-background-radius: 10; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 10, 0, 0, 5);">
+        <VBox spacing="5">
+            <Label text="Filtrar Período" style="-fx-font-size: 12px; -fx-text-fill: #7f8c8d; -fx-font-weight: bold;"/>
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <ComboBox fx:id="cbFiltroMesFull" prefWidth="150" promptText="Mês"/>
+                <Spinner fx:id="spFiltroAnoFull" prefWidth="100" editable="true"/>
+            </HBox>
+        </VBox>
+
+        <Region HBox.hgrow="ALWAYS" />
+
+        <Button text="Exportar Excel" onAction="#exportarParaExcel"
+                style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 20; -fx-cursor: hand; -fx-background-radius: 5;"/>
+
+        <Button text="Dashboard de Metas" onAction="#abrirDashboard"
+                style="-fx-background-color: #34495e; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 20; -fx-cursor: hand; -fx-background-radius: 5;"/>
+    </HBox>
+
+    <TableView fx:id="tableGastosFull" VBox.vgrow="ALWAYS" style="-fx-background-radius: 10;">
+        <columns>
+            <TableColumn fx:id="colData" text="Data" prefWidth="120"/>
+            <TableColumn fx:id="colDescricao" text="Descrição" prefWidth="450"/>
+            <TableColumn fx:id="colCategoria" text="Categoria" prefWidth="180"/>
+            <TableColumn fx:id="colValor" text="Valor" prefWidth="120"/>
+            <TableColumn fx:id="colMetodo" text="Pagamento" prefWidth="180"/>
+            <TableColumn fx:id="colAcoes" text="Ações" prefWidth="80" />
+        </columns>
+    </TableView>
+
+    <HBox alignment="CENTER_RIGHT" spacing="15" style="-fx-padding: 10;">
+        <Label text="Soma dos Lançamentos no Período:" style="-fx-font-size: 18px; -fx-font-weight: bold;"/>
+        <Label fx:id="lblTotalFull" text="R$ 0,00" style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #27ae60;"/>
+    </HBox>
+</VBox>

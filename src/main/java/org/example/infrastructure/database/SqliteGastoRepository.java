@@ -167,6 +167,8 @@ public class SqliteGastoRepository implements GastoRepository, MetodoRepository 
         List<MetodoPagamento> lista = new ArrayList<>();
         String sql = "SELECT nome, dia_vencimento FROM metodos_pagamento";
 
+        System.out.println("🚨 O sistema está buscando no SQLite!");
+
         // AJUSTADO: Usando getConnection()
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement();

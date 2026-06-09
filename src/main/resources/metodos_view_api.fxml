@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.VBox?>
+<VBox spacing="10" alignment="CENTER" xmlns="http://javafx.com/javafx/8"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="org.example.infrastructure.ui.MetodosControllerAPI"
+      prefWidth="300.0">
+
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <Label text="Novo Cartão/Conta" style="-fx-font-weight: bold; -fx-font-size: 16px;"/>
+
+    <TextField fx:id="txtNomeMetodo" promptText="Nome (ex: Nubank)"/>
+    <TextField fx:id="txtVencimento" promptText="Dia do Vencimento"/>
+
+    <Button text="Salvar" onAction="#aoSalvar" maxWidth="Infinity"
+            style="-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-weight: bold;"/>
+</VBox>

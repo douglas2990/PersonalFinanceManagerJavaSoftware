@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<VBox spacing="15" prefWidth="1000.0" prefHeight="600.0" xmlns="http://javafx.com/javafx/8"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="org.example.infrastructure.ui.PlanejamentoAnualControllerAPI">
+
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <HBox spacing="20" alignment="CENTER_LEFT">
+        <VBox>
+            <Label text="Planejamento Orçamentário Anual" style="-fx-font-weight: bold; -fx-font-size: 20px;"/>
+            <Label text="Defina as metas padrão e ajuste meses específicos se necessário." style="-fx-text-fill: gray;"/>
+        </VBox>
+        <Region HBox.hgrow="ALWAYS" />
+        <Spinner fx:id="spAno" prefWidth="100" />
+    </HBox>
+
+    <Separator/>
+
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Label text="Categoria:" style="-fx-font-weight: bold;"/>
+        <ComboBox fx:id="cbCategoriaMassa" prefWidth="150" promptText="Selecione..."/>
+
+        <Label text="Meta Padrão: R$" style="-fx-font-weight: bold;"/>
+        <TextField fx:id="txtValorMassa" prefWidth="80" promptText="0.00"/>
+
+        <Button text="Aplicar em todos os meses" onAction="#aplicarValorEmMassa"
+                style="-fx-background-color: #34495e; -fx-text-fill: white; -fx-cursor: hand;"/>
+    </HBox>
+
+    <TableView fx:id="tablePlanilha" editable="true" VBox.vgrow="ALWAYS">
+        <columns>
+            <TableColumn fx:id="colCategoria" text="Categoria" prefWidth="150" editable="false"/>
+            <TableColumn fx:id="colMetaAnual" text="META PADRÃO" prefWidth="120" style="-fx-background-color: #ecf0f1; -fx-font-weight: bold;"/>
+
+            <TableColumn fx:id="colJan" text="Jan" prefWidth="80"/>
+            <TableColumn fx:id="colFev" text="Fev" prefWidth="80"/>
+            <TableColumn fx:id="colMar" text="Mar" prefWidth="80"/>
+            <TableColumn fx:id="colAbr" text="Abr" prefWidth="80"/>
+            <TableColumn fx:id="colMai" text="Mai" prefWidth="80"/>
+            <TableColumn fx:id="colJun" text="Jun" prefWidth="80"/>
+            <TableColumn fx:id="colJul" text="Jul" prefWidth="80"/>
+            <TableColumn fx:id="colAgo" text="Ago" prefWidth="80"/>
+            <TableColumn fx:id="colSet" text="Set" prefWidth="80"/>
+            <TableColumn fx:id="colOut" text="Out" prefWidth="80"/>
+            <TableColumn fx:id="colNov" text="Nov" prefWidth="80"/>
+            <TableColumn fx:id="colDez" text="Dez" prefWidth="80"/>
+        </columns>
+    </TableView>
+
+    <HBox spacing="10" alignment="CENTER_RIGHT">
+        <Label text="* Clique duas vezes na célula para editar o valor" style="-fx-font-style: italic;"/>
+        <Region HBox.hgrow="ALWAYS" />
+        <Button text="Salvar Tudo" onAction="#salvarPlanejamento"
+                style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 20;"/>
+        <Button text="Cancelar" onAction="#fechar" />
+    </HBox>
+
+</VBox>

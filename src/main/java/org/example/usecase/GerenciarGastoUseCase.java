@@ -2,14 +2,21 @@ package org.example.usecase;
 
 import org.example.domain.entity.Gasto;
 import org.example.domain.repository.GastoRepository;
+import org.example.domain.repository.GastoRepositoryAPI;
+
 import java.time.LocalDate;
 
 public class GerenciarGastoUseCase {
+
     private final GastoRepository repository;
+
+
 
     public GerenciarGastoUseCase(GastoRepository repository) {
         this.repository = repository;
     }
+
+
 
     public void registrarGasto(Gasto gasto) {
         if (gasto.getTotalParcelas() > 1) {

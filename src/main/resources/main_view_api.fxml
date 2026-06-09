@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<VBox alignment="TOP_CENTER" spacing="0.0" xmlns="http://javafx.com/javafx/8"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="org.example.infrastructure.ui.MainControllerAPI"
+      prefWidth="500.0" prefHeight="650.0"> <MenuBar>
+    <menus>
+        <Menu text="Cadastros">
+            <items>
+                <MenuItem text="Métodos de Pagamento" onAction="#abrirCadastroMetodos"/>
+                <MenuItem text="Categorias" onAction="#abrirCadastroCategorias"/>
+            </items>
+        </Menu>
+        <Menu text="Relatórios">
+            <MenuItem text="Metas Mensais" onAction="#abrirDashboard"/>
+        </Menu>
+        <Menu text="Ajuda">
+            <items>
+                <MenuItem text="Sobre o Sistema" />
+            </items>
+        </Menu>
+    </menus>
+</MenuBar>
+
+    <VBox alignment="TOP_CENTER" spacing="15.0" VBox.vgrow="ALWAYS">
+        <padding>
+            <Insets bottom="30.0" left="30.0" right="30.0" top="30.0"/>
+        </padding>
+
+        <Label text="Novo Lançamento" style="-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;"/>
+
+        <Separator/>
+
+        <TextField fx:id="txtDescricao" promptText="Descrição (ex: Compra Mercado)"/>
+
+        <HBox spacing="10">
+            <TextField fx:id="txtValor" promptText="Valor (0.00)" HBox.hgrow="ALWAYS"/>
+            <DatePicker fx:id="dpData" promptText="Data" prefWidth="150"/>
+        </HBox>
+
+        <HBox spacing="10">
+            <ComboBox fx:id="cbCategoria" promptText="Categoria" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+            <ComboBox fx:id="cbMetodo" promptText="Pagamento" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+        </HBox>
+
+        <CheckBox fx:id="chkParcelado" text="Este gasto é parcelado?" onAction="#aoToggleParcelas"/>
+
+        <HBox fx:id="containerParcelas" spacing="10" visible="false">
+            <Label text="Quantidade de Parcelas:"/>
+            <TextField fx:id="txtQtdParcelas" prefWidth="60" text="1"/>
+        </HBox>
+
+        <Button text="Salvar Lançamento" onAction="#aoSalvar"
+                style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 20;"/>
+
+        <Separator/>
+
+        <Label text="Últimos Lançamentos" style="-fx-font-weight: bold;"/>
+
+        <HBox spacing="15" alignment="CENTER_LEFT">
+            <Label text="Filtrar por Período:" style="-fx-font-weight: bold;"/>
+            <ComboBox fx:id="cbFiltroMes" prefWidth="150" promptText="Selecione o Mês"/>
+            <Spinner fx:id="spFiltroAno" prefWidth="80" editable="true"/>
+            <Button text="Dashboard de Metas" onAction="#abrirDashboard"
+                    style="-fx-background-color: #34495e; -fx-text-fill: white; -fx-font-weight: bold;"/>
+        </HBox>
+
+        <HBox spacing="10" alignment="CENTER_RIGHT">
+            <Button text="⛶ Ver em Tela Cheia" onAction="#abrirTabelaExpandida"
+                    style="-fx-background-color: transparent; -fx-text-fill: #34495e; -fx-cursor: hand;"/>
+        </HBox>
+
+        <TableView fx:id="tableGastos" prefHeight="300.0" VBox.vgrow="ALWAYS">
+            <columns>
+                <TableColumn fx:id="colData" text="Data" prefWidth="90"/>
+                <TableColumn fx:id="colDescricao" text="Descrição" prefWidth="150"/>
+                <TableColumn fx:id="colCategoria" text="Categoria" prefWidth="120"/>
+                <TableColumn fx:id="colValor" text="Valor" prefWidth="80"/>
+                <TableColumn fx:id="colMetodo" text="Pagamento" prefWidth="100"/>
+                <TableColumn fx:id="colAcoes" text="Ações" prefWidth="60" />
+            </columns>
+        </TableView>
+        <HBox alignment="CENTER_RIGHT" spacing="10">
+            <padding>
+                <Insets top="10" right="5"/>
+            </padding>
+            <Label text="Total do Mês:" style="-fx-font-weight: bold; -fx-font-size: 16px;"/>
+            <Label fx:id="lblTotal" text="R$ 0,00" style="-fx-font-weight: bold; -fx-font-size: 16px; -fx-text-fill: #27ae60;"/>
+        </HBox>
+    </VBox>
+</VBox>
