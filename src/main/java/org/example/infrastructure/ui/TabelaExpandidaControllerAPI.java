@@ -145,4 +145,10 @@ public class TabelaExpandidaControllerAPI {
         spFiltroAnoFull.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(2020, 2030, ano));
         atualizarDados();
     }
+    @FXML
+    private void aoAtualizar() {
+        atualizarDados(); // Recarrega a lista expandida com base no mês/ano selecionados
+        System.out.println("Tabela expandida atualizada!");
+    }
+
 }

@@ -17,9 +17,11 @@ public class GastoResponseDto {
     @JsonProperty("data")
     private OffsetDateTime data;
 
+    // Alterado para String: O C# retorna o texto puro do banco
     @JsonProperty("categoria")
     private String categoria;
 
+    // Alterado para String: O C# retorna o texto puro do banco
     @JsonProperty("metodo")
     private String metodo;
 
@@ -29,10 +31,8 @@ public class GastoResponseDto {
     @JsonProperty("parcelaAtual")
     private int parcelaAtual;
 
-    // Construtor vazio obrigatório para o Jackson
     public GastoResponseDto() {}
 
-    // Construtor completo atualizado para OffsetDateTime
     public GastoResponseDto(int id, String descricao, double valor, OffsetDateTime data,
                             String categoria, String metodo, int totalParcelas, int parcelaAtual) {
         this.id = id;
@@ -45,23 +45,27 @@ public class GastoResponseDto {
         this.parcelaAtual = parcelaAtual;
     }
 
-    // Getters
     public int getId() { return id; }
-    public String getDescricao() { return descricao; }
-    public double getValor() { return valor; }
-    public OffsetDateTime getData() { return data; }
-    public String getCategoria() { return categoria; }
-    public String getMetodo() { return metodo; }
-    public int getTotalParcelas() { return totalParcelas; }
-    public int getParcelaAtual() { return parcelaAtual; }
-
-    // Setters
     public void setId(int id) { this.id = id; }
+
+    public String getDescricao() { return descricao; }
     public void setDescricao(String descricao) { this.descricao = descricao; }
+
+    public double getValor() { return valor; }
     public void setValor(double valor) { this.valor = valor; }
+
+    public OffsetDateTime getData() { return data; }
     public void setData(OffsetDateTime data) { this.data = data; }
+
+    public String getCategoria() { return categoria; }
     public void setCategoria(String categoria) { this.categoria = categoria; }
+
+    public String getMetodo() { return metodo; }
     public void setMetodo(String metodo) { this.metodo = metodo; }
+
+    public int getTotalParcelas() { return totalParcelas; }
     public void setTotalParcelas(int totalParcelas) { this.totalParcelas = totalParcelas; }
+
+    public int getParcelaAtual() { return parcelaAtual; }
     public void setParcelaAtual(int parcelaAtual) { this.parcelaAtual = parcelaAtual; }
 }

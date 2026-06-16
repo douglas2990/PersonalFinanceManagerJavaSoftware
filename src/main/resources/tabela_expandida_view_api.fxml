@@ -4,7 +4,7 @@
 <?import javafx.geometry.Insets?>
 
 <VBox spacing="15.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="org.example.infrastructure.ui.TabelaExpandidaController" style="-fx-background-color: #f4f7f6;">
+      fx:controller="org.example.infrastructure.ui.TabelaExpandidaControllerAPI" style="-fx-background-color: #f4f7f6;">
 
     <padding>
         <Insets top="20" right="30" bottom="20" left="30"/>
@@ -20,6 +20,9 @@
         </VBox>
 
         <Region HBox.hgrow="ALWAYS" />
+
+        <Button text="🔄 Atualizar" onAction="#aoAtualizar"
+                style="-fx-background-color: #2980b9; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 20; -fx-cursor: hand; -fx-background-radius: 5;"/>
 
         <Button text="Exportar Excel" onAction="#exportarParaExcel"
                 style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 20; -fx-cursor: hand; -fx-background-radius: 5;"/>

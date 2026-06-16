@@ -3,27 +3,32 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+
 <VBox alignment="TOP_CENTER" spacing="0.0" xmlns="http://javafx.com/javafx/8"
       xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="org.example.infrastructure.ui.MainControllerAPI"
-      prefWidth="500.0" prefHeight="650.0"> <MenuBar>
-    <menus>
-        <Menu text="Cadastros">
-            <items>
-                <MenuItem text="Métodos de Pagamento" onAction="#abrirCadastroMetodos"/>
-                <MenuItem text="Categorias" onAction="#abrirCadastroCategorias"/>
-            </items>
-        </Menu>
-        <Menu text="Relatórios">
-            <MenuItem text="Metas Mensais" onAction="#abrirDashboard"/>
-        </Menu>
-        <Menu text="Ajuda">
-            <items>
-                <MenuItem text="Sobre o Sistema" />
-            </items>
-        </Menu>
-    </menus>
-</MenuBar>
+      prefWidth="500.0" prefHeight="650.0">
+
+    <MenuBar>
+        <menus>
+            <Menu text="Cadastros">
+                <items>
+                    <MenuItem text="Métodos de Pagamento" onAction="#abrirCadastroMetodos"/>
+                    <MenuItem text="Categorias" onAction="#abrirCadastroCategorias"/>
+                </items>
+            </Menu>
+            <Menu text="Relatórios">
+                <items>
+                    <MenuItem text="Metas Mensais" onAction="#abrirDashboard"/>
+                </items>
+            </Menu>
+            <Menu text="Ajuda">
+                <items>
+                    <MenuItem text="Sobre o Sistema" />
+                </items>
+            </Menu>
+        </menus>
+    </MenuBar>
 
     <VBox alignment="TOP_CENTER" spacing="15.0" VBox.vgrow="ALWAYS">
         <padding>
@@ -62,8 +67,12 @@
 
         <HBox spacing="15" alignment="CENTER_LEFT">
             <Label text="Filtrar por Período:" style="-fx-font-weight: bold;"/>
-            <ComboBox fx:id="cbFiltroMes" prefWidth="150" promptText="Selecione o Mês"/>
+            <ComboBox fx:id="cbFiltroMes" prefWidth="120" promptText="Mês"/>
             <Spinner fx:id="spFiltroAno" prefWidth="80" editable="true"/>
+
+            <Button text="🔄 Atualizar" onAction="#aoAtualizar"
+                    style="-fx-background-color: #2980b9; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;"/>
+
             <Button text="Dashboard de Metas" onAction="#abrirDashboard"
                     style="-fx-background-color: #34495e; -fx-text-fill: white; -fx-font-weight: bold;"/>
         </HBox>
@@ -83,6 +92,7 @@
                 <TableColumn fx:id="colAcoes" text="Ações" prefWidth="60" />
             </columns>
         </TableView>
+
         <HBox alignment="CENTER_RIGHT" spacing="10">
             <padding>
                 <Insets top="10" right="5"/>

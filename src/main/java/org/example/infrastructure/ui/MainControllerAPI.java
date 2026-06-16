@@ -178,4 +178,12 @@ public class MainControllerAPI {
             stage.show();
         } catch (IOException e) { e.printStackTrace(); }
     }
+
+    @FXML
+    protected void aoAtualizar() {
+        atualizarTabela();            // Recarrega a lista de gastos da API
+        carregarCategoriasNoCombo();  // Recarrega as categorias da API
+        carregarMetodosNoCombo();     // Recarrega os métodos de pagamento da API
+        System.out.println("Tela principal atualizada com sucesso!");
+    }
 }
