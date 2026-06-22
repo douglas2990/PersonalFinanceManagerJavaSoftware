@@ -51,9 +51,13 @@
             <ComboBox fx:id="cbMetodo" promptText="Pagamento" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
         </HBox>
 
-        <CheckBox fx:id="chkParcelado" text="Este gasto é parcelado?" onAction="#aoToggleParcelas"/>
+        <HBox spacing="15" alignment="CENTER_LEFT" style="-fx-padding: 5 0 5 0;">
+            <CheckBox fx:id="chkCartaoCredito" text="Cartão de Crédito"/>
+            <CheckBox fx:id="chkCartaoNaoVirou" text="Fatura NÃO Virou"/>
+            <CheckBox fx:id="chkParcelado" text="Parcelado?" onAction="#aoToggleParcelas"/>
+        </HBox>
 
-        <HBox fx:id="containerParcelas" spacing="10" visible="false">
+        <HBox fx:id="containerParcelas" spacing="10" visible="false" alignment="CENTER_LEFT">
             <Label text="Quantidade de Parcelas:"/>
             <TextField fx:id="txtQtdParcelas" prefWidth="60" text="1"/>
         </HBox>

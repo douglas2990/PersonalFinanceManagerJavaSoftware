@@ -3,12 +3,12 @@ package org.example.infrastructure.database;
 import org.example.domain.entity.*;
 import org.example.domain.repository.GastoRepositoryAPI;
 import java.util.List;
+import java.util.ArrayList;
 
 public class SqliteGastoAdapter implements GastoRepositoryAPI {
 
     private SqliteGastoRepository sqliteRepo;
 
-    // Método privado que garante a instância preguiçosa (Lazy Loading)
     private SqliteGastoRepository getRepo() {
         if (sqliteRepo == null) {
             sqliteRepo = new SqliteGastoRepository();
@@ -38,10 +38,22 @@ public class SqliteGastoAdapter implements GastoRepositoryAPI {
     public List<Categoria> buscarTodasCategorias() { return getRepo().buscarTodasCategorias(); }
 
     @Override
+    public Categoria buscarCategoriaPorId(int id) {
+        // Fallback seguro já que a classe de Domínio Categoria não possui getId() exposto
+        return new Categoria("Desconhecida");
+    }
+
+    @Override
     public void salvarMetodo(MetodoPagamento metodo) { getRepo().salvarMetodo(metodo); }
 
     @Override
     public List<MetodoPagamento> buscarTodosMetodos() { return getRepo().buscarTodosMetodos(); }
+
+    @Override
+    public MetodoPagamento buscarMetodoPorId(int id) {
+        // Fallback seguro já que a classe de Domínio MetodoPagamento não possui getId() exposto
+        return new MetodoPagamento("Desconhecido", 0);
+    }
 
     @Override
     public void salvarOuAtualizarMeta(String categoria, int mes, int ano, double valor) {

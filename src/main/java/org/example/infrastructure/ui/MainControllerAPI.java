@@ -6,7 +6,6 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.layout.HBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
@@ -24,10 +23,15 @@ import java.util.List;
 public class MainControllerAPI {
     @FXML private TextField txtDescricao, txtValor, txtQtdParcelas;
     @FXML private DatePicker dpData;
-    @FXML private ComboBox<Categoria> cbCategoria;
+    @FXML private ComboBox<String> cbCategoria;
     @FXML private ComboBox<String> cbMetodo, cbFiltroMes;
     @FXML private Spinner<Integer> spFiltroAno;
     @FXML private CheckBox chkParcelado;
+
+    // Novas CheckBoxes conectadas ao seu FXML atualizado
+    @FXML private CheckBox chkCartaoCredito;
+    @FXML private CheckBox chkCartaoNaoVirou;
+
     @FXML private HBox containerParcelas;
     @FXML private TableView<Gasto> tableGastos;
     @FXML private TableColumn<Gasto, String> colData, colDescricao, colCategoria, colValor, colMetodo;
@@ -58,30 +62,32 @@ public class MainControllerAPI {
     }
 
     private void configurarTabela() {
-        tableGastos.setEditable(true);
+        tableGastos.setEditable(false);
+
         colData.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getData().toString()));
         colDescricao.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getDescricao()));
-        colDescricao.setCellFactory(TextFieldTableCell.forTableColumn());
-        colDescricao.setOnEditCommit(event -> {
-            Gasto g = event.getRowValue();
-            g.setDescricao(event.getNewValue());
-            repository.salvar(g);
-        });
-
         colValor.setCellValueFactory(cellData -> new SimpleStringProperty(String.format("R$ %.2f", cellData.getValue().getValor())));
-        colValor.setStyle("-fx-alignment: CENTER-RIGHT;");
-        colMetodo.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getMetodo().getNome()));
-        colCategoria.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getCategoria().getNome()));
 
+        colMetodo.setCellValueFactory(cellData -> new SimpleStringProperty(
+                cellData.getValue().getMetodo() != null ? cellData.getValue().getMetodo().getNome() : "N/A"));
+
+        colCategoria.setCellValueFactory(cellData -> new SimpleStringProperty(
+                cellData.getValue().getCategoria() != null ? cellData.getValue().getCategoria().getNome() : "N/A"));
+
+        // Coluna de Ações
         colAcoes.setCellFactory(param -> new TableCell<>() {
-            private final Button btn = new Button("❌");
+            private final Button btnEditar = new Button("✏️");
+            private final Button btnExcluir = new Button("❌");
+            private final HBox container = new HBox(5, btnEditar, btnExcluir);
+
             {
-                btn.setStyle("-fx-background-color: transparent; -fx-text-fill: #e74c3c; -fx-cursor: hand; -fx-font-weight: bold;");
-                btn.setOnAction(event -> confirmarExclusao(getTableView().getItems().get(getIndex())));
+                btnEditar.setOnAction(event -> abrirJanelaEdicao(getTableView().getItems().get(getIndex())));
+                btnExcluir.setOnAction(event -> confirmarExclusao(getTableView().getItems().get(getIndex())));
             }
+
             @Override protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
-                setGraphic(empty ? null : btn);
+                setGraphic(empty ? null : container);
             }
         });
     }
@@ -97,26 +103,87 @@ public class MainControllerAPI {
     @FXML
     protected void aoSalvar() {
         try {
+            String nomeCategoria = cbCategoria.getValue();
+            String nomeMetodo = cbMetodo.getValue();
+
+            System.out.println("--- INICIANDO SALVAMENTO ---");
+
+            // Validação de segurança
+            if (nomeCategoria == null || nomeCategoria.trim().isEmpty() || nomeMetodo == null || nomeMetodo.trim().isEmpty()) {
+                Alert alert = new Alert(Alert.AlertType.WARNING, "Selecione categoria e método!");
+                alert.showAndWait();
+                return;
+            }
+
             double valor = Double.parseDouble(txtValor.getText().replace(",", "."));
-            Gasto gasto = new Gasto(txtDescricao.getText(), valor, dpData.getValue(),
-                    cbCategoria.getValue(), new MetodoPagamento(cbMetodo.getValue(), 0),
-                    false, chkParcelado.isSelected() ? Integer.parseInt(txtQtdParcelas.getText()) : 1, 1);
-            useCase.registrarGasto(gasto);
+            int totalParcelas = chkParcelado.isSelected() ? Integer.parseInt(txtQtdParcelas.getText()) : 1;
+            String descricaoBase = txtDescricao.getText().trim();
+            LocalDate dataBase = dpData.getValue();
+
+            // --- LÓGICA INTELIGENTE DO CARTÃO DE CRÉDITO ---
+            // É cartão se: a caixa estiver marcada, se for parcelado, ou se o nome do método contiver a palavra "cartão"
+            boolean isCartao = chkCartaoCredito.isSelected()
+                    || chkParcelado.isSelected()
+                    || nomeMetodo.toLowerCase().contains("cartão");
+
+            boolean isCartaoNaoVirou = chkCartaoNaoVirou.isSelected();
+
+            int avancoInicial = 0;
+            if (isCartao && !isCartaoNaoVirou) {
+                // Se for cartão e a fatura já virou, a primeira parcela pula 1 mês pra frente (Julho)
+                avancoInicial = 1;
+            }
+
+            // LAÇO DE REPETIÇÃO: Gera um gasto para cada parcela
+            for (int i = 1; i <= totalParcelas; i++) {
+
+                // Adiciona a numeração da parcela no nome apenas se for parcelado (Ex: Barracuda 1/18)
+                String descFinal = totalParcelas > 1 ? descricaoBase + " " + i + "/" + totalParcelas : descricaoBase;
+
+                // Aplica a matemática do avanço inicial da fatura + o mês de cada parcela
+                LocalDate dataFinal = dataBase.plusMonths(avancoInicial + (i - 1));
+
+                Gasto gasto = new Gasto(
+                        descFinal,
+                        valor,
+                        dataFinal,
+                        new Categoria(nomeCategoria.trim()),
+                        new MetodoPagamento(nomeMetodo.trim(), 0),
+                        false,
+                        totalParcelas,
+                        i
+                );
+
+                System.out.println("Enviando parcela: " + descFinal + " para a data " + dataFinal);
+
+                // Salva na API
+                useCase.registrarGasto(gasto);
+            }
+
+            System.out.println("--- SALVAMENTO CONCLUÍDO ---");
+
             limparCampos();
             atualizarTabela();
-        } catch (Exception e) { e.printStackTrace(); }
+
+        } catch (Exception e) {
+            System.err.println("ERRO AO SALVAR:");
+            e.printStackTrace();
+            Alert alert = new Alert(Alert.AlertType.ERROR, "Erro: " + e.getMessage());
+            alert.showAndWait();
+        }
     }
 
     private void atualizarTabela() {
         int mes = cbFiltroMes.getSelectionModel().getSelectedIndex() + 1;
         int ano = spFiltroAno.getValue();
         List<Gasto> lista = repository.buscarPorMesEAno(mes, ano);
+        lista.forEach(g -> System.out.println("Gasto: " + g.getDescricao() + " Cat: " + g.getCategoria()));
         tableGastos.getItems().setAll(lista);
         lblTotal.setText(String.format("R$ %.2f", lista.stream().mapToDouble(Gasto::getValor).sum()));
     }
 
     private void carregarCategoriasNoCombo() {
-        cbCategoria.getItems().setAll(repository.buscarTodasCategorias());
+        cbCategoria.getItems().setAll(repository.buscarTodasCategorias().stream().map(Categoria::getNome).toList());
     }
 
     private void carregarMetodosNoCombo() {
@@ -130,6 +197,8 @@ public class MainControllerAPI {
         txtDescricao.clear();
         txtValor.clear();
         chkParcelado.setSelected(false);
+        chkCartaoCredito.setSelected(false);
+        chkCartaoNaoVirou.setSelected(false);
         containerParcelas.setVisible(false);
         txtQtdParcelas.setText("1");
     }
@@ -184,6 +253,22 @@ public class MainControllerAPI {
         atualizarTabela();            // Recarrega a lista de gastos da API
         carregarCategoriasNoCombo();  // Recarrega as categorias da API
         carregarMetodosNoCombo();     // Recarrega os métodos de pagamento da API
-        System.out.println("Tela principal atualizada com sucesso!");
+        System.out.println("Tela principal updated com sucesso!");
+    }
+
+    private void abrirJanelaEdicao(Gasto gasto) {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/edicao_gasto.fxml"));
+            Stage stage = new Stage();
+            stage.setTitle("Editar Gasto: " + gasto.getDescricao());
+            stage.initModality(Modality.APPLICATION_MODAL);
+            stage.setScene(new Scene(loader.load()));
+
+            EdicaoGastoControllerAPI controller = loader.getController();
+            controller.setGasto(gasto);
+
+            stage.showAndWait();
+            atualizarTabela();
+        } catch (IOException e) { e.printStackTrace(); }
     }
 }

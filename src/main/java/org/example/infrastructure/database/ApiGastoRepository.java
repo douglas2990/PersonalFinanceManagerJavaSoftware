@@ -26,18 +26,31 @@ public class ApiGastoRepository implements GastoRepositoryAPI {
     @Override
     public void salvar(Gasto gasto) {
         try {
-            // Criamos o JSON dinamicamente para enviar os TEXTOS (strings) que o seu C# espera
+            int categoriaId = obterIdCategoriaPorNome(gasto.getCategoria().getNome());
+            int metodoId = obterIdMetodoPorNome(gasto.getMetodo().getNome());
+
             Map<String, Object> payload = new HashMap<>();
             payload.put("id", gasto.getId());
             payload.put("descricao", gasto.getDescricao());
             payload.put("valor", gasto.getValor());
-            payload.put("data", gasto.getData().toString() + "T00:00:00Z"); // Formato ISO para o C#
-            payload.put("categoria", gasto.getCategoria().getNome()); // Envia o texto puro da categoria
-            payload.put("metodo", gasto.getMetodo().getNome());       // Envia o texto puro do método
+            payload.put("data", gasto.getData().toString());
+
+            // --- A CORREÇÃO ESTÁ AQUI: Enviamos os textos simples que o seu banco C# exige ---
+            payload.put("categoria", gasto.getCategoria().getNome());
+            payload.put("metodo", gasto.getMetodo().getNome());
+
+            // Mantemos os IDs por precaução (caso você mude a estrutura do C# no futuro)
+            payload.put("categoriaId", categoriaId);
+            payload.put("CategoriaId", categoriaId);
+            payload.put("metodoId", metodoId);
+            payload.put("MetodoId", metodoId);
+            payload.put("MetodoPagamentoId", metodoId);
+
             payload.put("totalParcelas", gasto.getTotalParcelas());
             payload.put("parcelaAtual", gasto.getParcelaAtual());
 
             String json = objectMapper.writeValueAsString(payload);
+            System.out.println("-> Enviando JSON para C#: " + json);
 
             boolean ehAtualizacao = (gasto.getId() > 0);
             String url = ehAtualizacao ? baseUrlGastos + "/" + gasto.getId() : baseUrlGastos;
@@ -50,83 +63,131 @@ public class ApiGastoRepository implements GastoRepositoryAPI {
             else builder.POST(HttpRequest.BodyPublishers.ofString(json));
 
             HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
-            System.out.println("Gasto salvo! Status HTTP da API: " + response.statusCode());
+            System.out.println("-> Resposta do Salvamento C#: [" + response.statusCode() + "] " + response.body());
         } catch (Exception e) {
-            System.err.println("Erro ao salvar gasto: " + e.getMessage());
+            e.printStackTrace();
         }
     }
+
+    @Override
+    public void atualizarGasto(Gasto g) { salvar(g); }
 
     @Override
     public void removerGasto(int id) {
         try {
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(baseUrlGastos + "/" + id))
-                    .DELETE()
-                    .build();
+            HttpRequest request = HttpRequest.newBuilder().uri(URI.create(baseUrlGastos + "/" + id)).DELETE().build();
             httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        } catch (Exception e) {
-            System.err.println("Erro ao remover gasto: " + e.getMessage());
-        }
+        } catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @Override
+    public List<Gasto> buscarTodos() {
+        return buscarDeApi(baseUrlGastos);
     }
 
     @Override
     public List<Gasto> buscarPorMesEAno(int mes, int ano) {
+        String url = baseUrlGastos + "?mes=" + mes + "&ano=" + ano;
+        return buscarDeApi(url);
+    }
+
+    private List<Gasto> buscarDeApi(String url) {
         try {
-            String url = baseUrlGastos + "?mes=" + mes + "&ano=" + ano;
             HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url)).GET().build();
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() != 200) return new ArrayList<>();
 
-            List<GastoResponseDto> dtos = objectMapper.readValue(response.body(), new TypeReference<>(){});
+            JsonNode root = objectMapper.readTree(response.body());
             List<Gasto> lista = new ArrayList<>();
-            for (GastoResponseDto d : dtos) lista.add(converter(d));
+            for (JsonNode node : root) {
+                lista.add(converterJsonNode(node));
+            }
             return lista;
         } catch (Exception e) {
+            e.printStackTrace();
             return new ArrayList<>();
         }
     }
 
-    private Gasto converter(GastoResponseDto dto) {
-        // Como o DTO voltou a ser String, pegamos o texto puro vindo do C#
-        String nomeCategoria = (dto.getCategoria() != null) ? dto.getCategoria() : "Sem Categoria";
-        String nomeMetodo = (dto.getMetodo() != null) ? dto.getMetodo() : "Sem Pagamento";
+    // --- O PULO DO GATO: Processamento à prova de falhas ---
+    private Gasto converterJsonNode(JsonNode node) {
+        int id = getAsInt(node, "id", "Id", "ID");
+        String descricao = getAsText(node, "descricao", "Descricao");
+        double valor = getAsDouble(node, "valor", "Valor");
 
-        return new Gasto(
-                dto.getId(),
-                dto.getDescricao(),
-                dto.getValor(),
-                dto.getData().toLocalDate(),
-                new Categoria(nomeCategoria),
-                new MetodoPagamento(nomeMetodo, 0),
-                false,
-                dto.getTotalParcelas(),
-                dto.getParcelaAtual()
-        );
+        String dataStr = getAsText(node, "data", "Data");
+        java.time.LocalDate data = dataStr.isEmpty() ? java.time.LocalDate.now() : java.time.LocalDate.parse(dataStr.substring(0, 10));
+
+        int totalParcelas = getAsInt(node, "totalParcelas", "TotalParcelas");
+        int parcelaAtual = getAsInt(node, "parcelaAtual", "ParcelaAtual");
+
+        // 1. Resolve a Categoria (Prioridade: String, depois busca por ID)
+        Categoria cat = null;
+        String nomeCat = getAsText(node, "categoria", "Categoria");
+        if (!nomeCat.isEmpty()) {
+            cat = new Categoria(nomeCat);
+        } else {
+            int catId = getAsInt(node, "categoriaId", "CategoriaId");
+            if (catId > 0) cat = buscarCategoriaPorId(catId);
+        }
+        if (cat == null) cat = new Categoria("Sem Categoria");
+
+        // 2. Resolve o Método (Prioridade: String, depois busca por ID)
+        MetodoPagamento met = null;
+        String nomeMet = getAsText(node, "metodo", "Metodo");
+        if (!nomeMet.isEmpty()) {
+            met = new MetodoPagamento(nomeMet, 0);
+        } else {
+            int metId = getAsInt(node, "metodoId", "MetodoId", "metodoPagamentoId", "MetodoPagamentoId");
+            if (metId > 0) met = buscarMetodoPorId(metId);
+        }
+        if (met == null) met = new MetodoPagamento("Sem Pagamento", 0);
+
+        return new Gasto(id, descricao, valor, data, cat, met, false, totalParcelas, parcelaAtual);
     }
 
-    @Override public void atualizarGasto(Gasto g) { salvar(g); }
-    @Override public List<Gasto> buscarTodos() { return new ArrayList<>(); }
+    // --- FUNÇÕES CAÇADORAS (Ignoram Case Sensitive do JSON) ---
+    private int getAsInt(JsonNode node, String... keys) {
+        for (String k : keys) if (node.has(k) && !node.get(k).isNull()) return node.get(k).asInt();
+        return 0;
+    }
+    private String getAsText(JsonNode node, String... keys) {
+        for (String k : keys) if (node.has(k) && !node.get(k).isNull()) return node.get(k).asText();
+        return "";
+    }
+    private double getAsDouble(JsonNode node, String... keys) {
+        for (String k : keys) if (node.has(k) && !node.get(k).isNull()) return node.get(k).asDouble();
+        return 0.0;
+    }
+    private JsonNode getAsNode(JsonNode node, String... keys) {
+        for (String k : keys) if (node.has(k) && !node.get(k).isNull()) return node.get(k);
+        return null;
+    }
 
+    // --- Restante do código ---
     @Override
     public List<Categoria> buscarTodasCategorias() {
         try {
             HttpRequest request = HttpRequest.newBuilder().uri(URI.create(baseUrlCategorias)).GET().build();
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) return new ArrayList<>();
 
-            // Lê o JSON da API usando a sua classe CategoriaApi
+            List<CategoriaApi> dtos = objectMapper.readValue(response.body(), new TypeReference<>(){});
+            return dtos.stream().map(d -> new Categoria(d.getNome())).toList();
+        } catch (Exception e) { return new ArrayList<>(); }
+    }
+
+    @Override
+    public Categoria buscarCategoriaPorId(int id) {
+        try {
+            HttpRequest request = HttpRequest.newBuilder().uri(URI.create(baseUrlCategorias)).GET().build();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             List<CategoriaApi> dtos = objectMapper.readValue(response.body(), new TypeReference<>(){});
 
-            // Converte para a estrutura de Domínio pura (apenas o Nome)
-            List<Categoria> lista = new ArrayList<>();
-            for (CategoriaApi d : dtos) {
-                lista.add(new Categoria(d.getNome()));
-            }
-            return lista;
-        } catch (Exception e) {
-            System.err.println("Erro ao buscar categorias: " + e.getMessage());
-            return new ArrayList<>();
-        }
+            return dtos.stream().filter(c -> c.getId() == id).findFirst()
+                    .map(c -> new Categoria(c.getNome())).orElse(new Categoria("Desconhecida"));
+        } catch (Exception e) { return new Categoria("Erro"); }
     }
 
     @Override
@@ -134,91 +195,83 @@ public class ApiGastoRepository implements GastoRepositoryAPI {
         try {
             HttpRequest request = HttpRequest.newBuilder().uri(URI.create(baseUrlMetodos)).GET().build();
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) return new ArrayList<>();
 
-            // Alterado: Agora lê o JSON usando a sua classe MetodoPagamentoApi
+            List<MetodoPagamentoApi> dtos = objectMapper.readValue(response.body(), new TypeReference<>(){});
+            return dtos.stream().map(d -> new MetodoPagamento(d.getNome(), d.getDiaVencimento())).toList();
+        } catch (Exception e) { return new ArrayList<>(); }
+    }
+
+    @Override
+    public MetodoPagamento buscarMetodoPorId(int id) {
+        try {
+            HttpRequest request = HttpRequest.newBuilder().uri(URI.create(baseUrlMetodos)).GET().build();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             List<MetodoPagamentoApi> dtos = objectMapper.readValue(response.body(), new TypeReference<>(){});
 
-            // Converte para a estrutura de Domínio pura (Nome e dia de vencimento)
-            List<MetodoPagamento> lista = new ArrayList<>();
-            for (MetodoPagamentoApi d : dtos) {
-                lista.add(new MetodoPagamento(d.getNome(), d.getDiaVencimento()));
-            }
-            return lista;
-        } catch (Exception e) {
-            System.err.println("Erro ao buscar métodos de pagamento: " + e.getMessage());
-            return new ArrayList<>();
-        }
+            return dtos.stream().filter(m -> m.getId() == id).findFirst()
+                    .map(m -> new MetodoPagamento(m.getNome(), m.getDiaVencimento()))
+                    .orElse(new MetodoPagamento("Desconhecido", 0));
+        } catch (Exception e) { return new MetodoPagamento("Erro", 0); }
     }
 
     @Override
     public void salvarCategoria(Categoria c) {
         try {
-            // Transforma o Domínio puro na classe da API com o ID zerado (para o C# saber que é um novo registro)
-            CategoriaApi apiObj = new CategoriaApi(0, c.getNome());
-            String json = objectMapper.writeValueAsString(apiObj);
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("id", 0);
+            payload.put("nome", c.getNome());
+            String json = objectMapper.writeValueAsString(payload);
 
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(baseUrlCategorias))
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(json))
-                    .build();
-
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            System.out.println("Status do cadastro de categoria: " + response.statusCode());
-        } catch (Exception e) {
-            System.err.println("Erro ao salvar categoria: " + e.getMessage());
-        }
+            HttpRequest request = HttpRequest.newBuilder().uri(URI.create(baseUrlCategorias))
+                    .header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(json)).build();
+            httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        } catch (Exception e) { e.printStackTrace(); }
     }
 
     @Override
     public void salvarMetodo(MetodoPagamento m) {
         try {
-            // Transforma o Domínio puro na classe da API antes de enviar
-            MetodoPagamentoApi apiObj = new MetodoPagamentoApi(0, m.getNome(), m.getDiaVencimento());
-            String json = objectMapper.writeValueAsString(apiObj);
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("id", 0);
+            payload.put("nome", m.getNome());
+            payload.put("diaVencimento", m.getDiaVencimento());
+            String json = objectMapper.writeValueAsString(payload);
 
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(baseUrlMetodos))
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(json))
-                    .build();
-
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            System.out.println("Status do cadastro de método: " + response.statusCode());
-        } catch (Exception e) {
-            System.err.println("Erro ao salvar método: " + e.getMessage());
-        }
+            HttpRequest request = HttpRequest.newBuilder().uri(URI.create(baseUrlMetodos))
+                    .header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(json)).build();
+            httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        } catch (Exception e) { e.printStackTrace(); }
     }
 
-    // --- Métodos auxiliares usando estritamente as suas classes CategoriaApi e MetodoPagamentoApi ---
     private int obterIdCategoriaPorNome(String nome) {
         try {
-            HttpRequest request = HttpRequest.newBuilder().uri(URI.create(baseUrlCategorias)).GET().build();
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            List<CategoriaApi> dtos = objectMapper.readValue(response.body(), new TypeReference<>(){});
-            for (CategoriaApi c : dtos) {
-                if (c.getNome().equalsIgnoreCase(nome)) return c.getId();
+            for (CategoriaApi c : obterTodasCategoriasApiRaw()) {
+                if (c.getNome().trim().equalsIgnoreCase(nome.trim())) return c.getId();
             }
-        } catch (Exception e) {
-            System.err.println("Erro ao resolver ID da categoria: " + e.getMessage());
-        }
+        } catch (Exception e) { e.printStackTrace(); }
         return 1;
     }
 
     private int obterIdMetodoPorNome(String nome) {
         try {
-            HttpRequest request = HttpRequest.newBuilder().uri(URI.create(baseUrlMetodos)).GET().build();
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-            // Alterado para usar MetodoPagamentoApi para fazer a busca do ID
-            List<MetodoPagamentoApi> dtos = objectMapper.readValue(response.body(), new TypeReference<>(){});
-            for (MetodoPagamentoApi m : dtos) {
-                if (m.getNome().equalsIgnoreCase(nome)) return m.getId();
+            for (MetodoPagamentoApi m : obterTodosMetodosApiRaw()) {
+                if (m.getNome().trim().equalsIgnoreCase(nome.trim())) return m.getId();
             }
-        } catch (Exception e) {
-            System.err.println("Erro ao resolver ID do método: " + e.getMessage());
-        }
+        } catch (Exception e) { e.printStackTrace(); }
         return 1;
+    }
+
+    private List<CategoriaApi> obterTodasCategoriasApiRaw() throws Exception {
+        HttpRequest request = HttpRequest.newBuilder().uri(URI.create(baseUrlCategorias)).GET().build();
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        return objectMapper.readValue(response.body(), new TypeReference<>(){});
+    }
+
+    private List<MetodoPagamentoApi> obterTodosMetodosApiRaw() throws Exception {
+        HttpRequest request = HttpRequest.newBuilder().uri(URI.create(baseUrlMetodos)).GET().build();
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        return objectMapper.readValue(response.body(), new TypeReference<>(){});
     }
 
     @Override public double buscarMetaFinal(String c, int m, int a) { return 0; }

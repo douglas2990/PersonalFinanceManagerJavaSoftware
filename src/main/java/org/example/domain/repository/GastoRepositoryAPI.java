@@ -6,9 +6,10 @@ import org.example.domain.entity.MetodoPagamento;
 import java.util.List;
 
 public interface GastoRepositoryAPI {
+
     // Gastos
     void salvar(Gasto gasto);
-    void atualizarGasto(Gasto gasto); // ADICIONE ISSO (O erro apontava falta disso)
+    void atualizarGasto(Gasto gasto);
     void removerGasto(int id);
     List<Gasto> buscarTodos();
     List<Gasto> buscarPorMesEAno(int mes, int ano);
@@ -16,10 +17,12 @@ public interface GastoRepositoryAPI {
     // Categorias
     void salvarCategoria(Categoria categoria);
     List<Categoria> buscarTodasCategorias();
+    Categoria buscarCategoriaPorId(int id);
 
     // Métodos de Pagamento
     void salvarMetodo(MetodoPagamento metodo);
-    List<MetodoPagamento> buscarTodosMetodos(); // ADICIONE ISSO (Estava faltando)
+    List<MetodoPagamento> buscarTodosMetodos();
+    MetodoPagamento buscarMetodoPorId(int id);
 
     // Metas
     void salvarOuAtualizarMeta(String categoria, int mes, int ano, double valor);

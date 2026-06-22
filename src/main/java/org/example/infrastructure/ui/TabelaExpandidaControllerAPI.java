@@ -7,12 +7,17 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.TextFieldTableCell;
+import javafx.scene.layout.HBox;
+import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.example.domain.entity.Categoria;
 import org.example.domain.entity.Gasto;
+import org.example.domain.entity.MetodoPagamento;
 import org.example.domain.repository.GastoRepositoryAPI;
 import org.example.domain.repository.RepositoryFactory;
 
@@ -44,34 +49,30 @@ public class TabelaExpandidaControllerAPI {
     }
 
     private void configurarColunas() {
-        tableGastosFull.setEditable(true);
+        tableGastosFull.setEditable(false); // Agora a edição é via Modal
 
         colData.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getData().toString()));
-
         colDescricao.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getDescricao()));
-        colDescricao.setCellFactory(TextFieldTableCell.forTableColumn());
-        colDescricao.setOnEditCommit(event -> {
-            Gasto g = event.getRowValue();
-            g.setDescricao(event.getNewValue());
-            // Usa o método da interface que funciona para ambos
-            repository.salvar(g);
-        });
-
-        colCategoria.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getCategoria().getNome()));
-        colMetodo.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getMetodo().getNome()));
-
         colValor.setCellValueFactory(cellData -> new SimpleStringProperty(String.format("R$ %.2f", cellData.getValue().getValor())));
-        colValor.setStyle("-fx-alignment: CENTER-RIGHT;");
+        colMetodo.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getMetodo().getNome()));
+        colCategoria.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getCategoria().getNome()));
 
         colAcoes.setCellFactory(param -> new TableCell<>() {
-            private final Button btn = new Button("❌");
+            private final Button btnEditar = new Button("✏️");
+            private final Button btnExcluir = new Button("❌");
+            private final HBox container = new HBox(5, btnEditar, btnExcluir);
+
             {
-                btn.setStyle("-fx-background-color: transparent; -fx-text-fill: #e74c3c; -fx-cursor: hand; -fx-font-weight: bold;");
-                btn.setOnAction(event -> removerGasto(getTableView().getItems().get(getIndex())));
+                btnEditar.setStyle("-fx-background-color: transparent; -fx-cursor: hand;");
+                btnEditar.setOnAction(event -> abrirJanelaEdicao(getTableView().getItems().get(getIndex())));
+
+                btnExcluir.setStyle("-fx-background-color: transparent; -fx-text-fill: #e74c3c; -fx-cursor: hand;");
+                btnExcluir.setOnAction(event -> removerGasto(getTableView().getItems().get(getIndex())));
             }
+
             @Override protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
-                setGraphic(empty ? null : btn);
+                setGraphic(empty ? null : container);
             }
         });
     }
@@ -98,20 +99,39 @@ public class TabelaExpandidaControllerAPI {
 
     @FXML
     private void exportarParaExcel() {
-        try {
-            List<Gasto> lista = tableGastosFull.getItems();
-            if (lista.isEmpty()) return;
+        List<Gasto> lista = tableGastosFull.getItems();
+        if (lista.isEmpty()) {
+            Alert alert = new Alert(Alert.AlertType.WARNING, "Não há dados para exportar!");
+            alert.showAndWait();
+            return;
+        }
 
-            FileChooser fileChooser = new FileChooser();
-            fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Excel", "*.xlsx"));
-            java.io.File file = fileChooser.showSaveDialog(tableGastosFull.getScene().getWindow());
+        // 1. Criar o seletor de pasta
+        DirectoryChooser directoryChooser = new DirectoryChooser();
+        directoryChooser.setTitle("Selecionar pasta para salvar o relatório");
+        java.io.File selectedDirectory = directoryChooser.showDialog(tableGastosFull.getScene().getWindow());
 
-            if (file != null) {
-                Workbook workbook = new XSSFWorkbook();
+        if (selectedDirectory != null) {
+            // 2. Definir o nome do arquivo automaticamente
+            String nomeArquivo = "Gastos_" + cbFiltroMesFull.getValue() + "_" + spFiltroAnoFull.getValue() + ".xlsx";
+            java.io.File file = new java.io.File(selectedDirectory, nomeArquivo);
+
+            try (Workbook workbook = new XSSFWorkbook()) {
                 Sheet sheet = workbook.createSheet("Gastos");
+
+                // Estilo para o cabeçalho
+                CellStyle headerStyle = workbook.createCellStyle();
+                Font font = workbook.createFont();
+                font.setBold(true);
+                headerStyle.setFont(font);
+
                 Row header = sheet.createRow(0);
                 String[] cols = {"Data", "Descrição", "Categoria", "Valor", "Pagamento"};
-                for (int i = 0; i < cols.length; i++) header.createCell(i).setCellValue(cols[i]);
+                for (int i = 0; i < cols.length; i++) {
+                    Cell cell = header.createCell(i);
+                    cell.setCellValue(cols[i]);
+                    cell.setCellStyle(headerStyle);
+                }
 
                 int r = 1;
                 for (Gasto g : lista) {
@@ -122,10 +142,24 @@ public class TabelaExpandidaControllerAPI {
                     row.createCell(3).setCellValue(g.getValor());
                     row.createCell(4).setCellValue(g.getMetodo().getNome());
                 }
-                try (FileOutputStream out = new FileOutputStream(file)) { workbook.write(out); }
-                workbook.close();
+
+                // Ajustar largura das colunas
+                for (int i = 0; i < cols.length; i++) sheet.autoSizeColumn(i);
+
+                try (FileOutputStream out = new FileOutputStream(file)) {
+                    workbook.write(out);
+                }
+
+                // Feedback de sucesso
+                Alert alert = new Alert(Alert.AlertType.INFORMATION, "Arquivo salvo em: " + file.getAbsolutePath());
+                alert.showAndWait();
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                Alert alert = new Alert(Alert.AlertType.ERROR, "Erro ao gerar Excel: " + e.getMessage());
+                alert.showAndWait();
             }
-        } catch (Exception e) { e.printStackTrace(); }
+        }
     }
 
     @FXML
@@ -149,6 +183,22 @@ public class TabelaExpandidaControllerAPI {
     private void aoAtualizar() {
         atualizarDados(); // Recarrega a lista expandida com base no mês/ano selecionados
         System.out.println("Tabela expandida atualizada!");
+    }
+
+    private void abrirJanelaEdicao(Gasto gasto) {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/edicao_gasto.fxml"));
+            Stage stage = new Stage();
+            stage.setTitle("Editar Gasto");
+            stage.initModality(Modality.APPLICATION_MODAL);
+            stage.setScene(new Scene(loader.load()));
+
+            EdicaoGastoControllerAPI controller = loader.getController();
+            controller.setGasto(gasto);
+
+            stage.showAndWait();
+            atualizarDados(); // Atualiza a tabela ao fechar o modal
+        } catch (IOException e) { e.printStackTrace(); }
     }
 
 }

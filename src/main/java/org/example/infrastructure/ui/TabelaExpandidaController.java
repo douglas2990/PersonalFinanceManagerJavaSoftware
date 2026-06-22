@@ -9,8 +9,14 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import org.apache.poi.ss.usermodel.Cell;
 import org.example.domain.entity.Gasto;
 import org.example.infrastructure.database.SqliteGastoRepository;
+import javafx.stage.DirectoryChooser;
+import java.io.File;
+import java.io.FileOutputStream;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import java.io.IOException;
 import java.util.List;
@@ -78,39 +84,46 @@ public class TabelaExpandidaController {
 
     @FXML
     private void exportarParaExcel() {
-        try {
-            List<Gasto> listaParaExportar = tableGastosFull.getItems();
+        List<Gasto> listaParaExportar = tableGastosFull.getItems();
 
-            if (listaParaExportar.isEmpty()) {
-                Alert alert = new Alert(Alert.AlertType.WARNING, "Não há dados para exportar!", ButtonType.OK);
-                alert.showAndWait();
-                return;
-            }
+        if (listaParaExportar.isEmpty()) {
+            Alert alert = new Alert(Alert.AlertType.WARNING, "Não há dados para exportar!", ButtonType.OK);
+            alert.showAndWait();
+            return;
+        }
 
-            javafx.stage.FileChooser fileChooser = new javafx.stage.FileChooser();
-            fileChooser.setTitle("Salvar Relatório Excel");
-            fileChooser.getExtensionFilters().add(new javafx.stage.FileChooser.ExtensionFilter("Arquivo Excel (*.xlsx)", "*.xlsx"));
-            fileChooser.setInitialFileName("Relatorio_Financas.xlsx");
+        // Usa o DirectoryChooser para selecionar apenas a pasta
+        DirectoryChooser directoryChooser = new DirectoryChooser();
+        directoryChooser.setTitle("Selecionar pasta para salvar o relatório");
+        File selectedDirectory = directoryChooser.showDialog(tableGastosFull.getScene().getWindow());
 
-            java.io.File file = fileChooser.showSaveDialog(tableGastosFull.getScene().getWindow());
+        if (selectedDirectory != null) {
+            // Nomeia o arquivo automaticamente
+            String nomeArquivo = "Relatorio_Financas_" + cbFiltroMesFull.getValue() + "_" + spFiltroAnoFull.getValue() + ".xlsx";
+            File file = new File(selectedDirectory, nomeArquivo);
 
-            if (file != null) {
-                // Criação do Excel usando Apache POI diretamente
-                org.apache.poi.ss.usermodel.Workbook workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook();
-                org.apache.poi.ss.usermodel.Sheet sheet = workbook.createSheet("Gastos");
+            try (Workbook workbook = new XSSFWorkbook()) {
+                Sheet sheet = workbook.createSheet("Gastos");
+
+                // Estilo para o cabeçalho
+                CellStyle headerStyle = workbook.createCellStyle();
+                Font font = workbook.createFont();
+                font.setBold(true);
+                headerStyle.setFont(font);
 
                 // Cabeçalho
-                org.apache.poi.ss.usermodel.Row headerRow = sheet.createRow(0);
+                Row headerRow = sheet.createRow(0);
                 String[] colunas = {"Data", "Descrição", "Categoria", "Valor", "Pagamento"};
                 for (int i = 0; i < colunas.length; i++) {
-                    org.apache.poi.ss.usermodel.Cell cell = headerRow.createCell(i);
+                    Cell cell = headerRow.createCell(i);
                     cell.setCellValue(colunas[i]);
+                    cell.setCellStyle(headerStyle);
                 }
 
                 // Dados
                 int rowNum = 1;
                 for (Gasto g : listaParaExportar) {
-                    org.apache.poi.ss.usermodel.Row row = sheet.createRow(rowNum++);
+                    Row row = sheet.createRow(rowNum++);
                     row.createCell(0).setCellValue(g.getData().toString());
                     row.createCell(1).setCellValue(g.getDescricao());
                     row.createCell(2).setCellValue(g.getCategoria().getNome());
@@ -118,25 +131,26 @@ public class TabelaExpandidaController {
                     row.createCell(4).setCellValue(g.getMetodo().getNome());
                 }
 
-                // Auto-ajuste de colunas
+                // Auto-ajuste de colunas para ficar legível
                 for (int i = 0; i < colunas.length; i++) {
                     sheet.autoSizeColumn(i);
                 }
 
-                try (java.io.FileOutputStream fileOut = new java.io.FileOutputStream(file)) {
+                try (FileOutputStream fileOut = new FileOutputStream(file)) {
                     workbook.write(fileOut);
                 }
                 workbook.close();
 
-                Alert alert = new Alert(Alert.AlertType.INFORMATION, "✅ Excel gerado com sucesso!", ButtonType.OK);
+                Alert alert = new Alert(Alert.AlertType.INFORMATION, "✅ Excel gerado com sucesso em:\n" + file.getAbsolutePath(), ButtonType.OK);
+                alert.showAndWait();
+
+            } catch (Exception e) {
+                System.err.println("❌ Erro ao exportar para Excel: " + e.getMessage());
+                Alert alert = new Alert(Alert.AlertType.ERROR, "Erro ao salvar o arquivo: " + e.getMessage(), ButtonType.OK);
                 alert.showAndWait();
             }
-        } catch (Exception e) {
-            System.err.println("❌ Erro ao exportar para Excel: " + e.getMessage());
-            e.printStackTrace();
         }
     }
-
     @FXML
     private void abrirDashboard() {
         try {
