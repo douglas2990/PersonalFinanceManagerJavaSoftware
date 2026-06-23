@@ -13,17 +13,22 @@ public class MetodoPagamentoApi {
     @JsonProperty("diaVencimento")
     private int diaVencimento;
 
+    // NOVO CAMPO: Cor do cartão/método
+    @JsonProperty("cor")
+    private String cor;
+
     // CONSTRUTOR VAZIO OBRIGATÓRIO PARA O JACKSON
     public MetodoPagamentoApi() {}
 
-    // Seu construtor atual com parâmetros
-    public MetodoPagamentoApi(int id, String nome, int diaVencimento) {
+    // Construtor atualizado com parâmetros
+    public MetodoPagamentoApi(int id, String nome, int diaVencimento, String cor) {
         this.id = id;
         this.nome = nome;
         this.diaVencimento = diaVencimento;
+        this.cor = cor;
     }
 
-    // Getters e Setters obrigatórios
+    // Getters e Setters
     public int getId() { return id; }
     public void setId(int id) { this.id = id; }
 
@@ -32,4 +37,8 @@ public class MetodoPagamentoApi {
 
     public int getDiaVencimento() { return diaVencimento; }
     public void setDiaVencimento(int diaVencimento) { this.diaVencimento = diaVencimento; }
+
+    // Getters e Setters da nova propriedade 'cor'
+    public String getCor() { return cor; }
+    public void setCor(String cor) { this.cor = cor; }
 }

@@ -2,7 +2,7 @@ package org.example.domain.repository;
 
 import org.example.domain.entity.Categoria;
 import org.example.domain.entity.Gasto;
-import org.example.domain.entity.MetodoPagamento;
+import org.example.domain.entity.MetodoPagamentoApi; // Importante: classe atualizada
 import java.util.List;
 
 public interface GastoRepositoryAPI {
@@ -19,10 +19,10 @@ public interface GastoRepositoryAPI {
     List<Categoria> buscarTodasCategorias();
     Categoria buscarCategoriaPorId(int id);
 
-    // Métodos de Pagamento
-    void salvarMetodo(MetodoPagamento metodo);
-    List<MetodoPagamento> buscarTodosMetodos();
-    MetodoPagamento buscarMetodoPorId(int id);
+    // Métodos de Pagamento - Atualizado para usar MetodoPagamentoApi
+    void salvarMetodo(MetodoPagamentoApi metodo);
+    List<MetodoPagamentoApi> buscarTodosMetodos();
+    MetodoPagamentoApi buscarMetodoPorId(int id);
 
     // Metas
     void salvarOuAtualizarMeta(String categoria, int mes, int ano, double valor);

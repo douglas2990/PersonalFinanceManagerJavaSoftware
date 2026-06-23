@@ -20,4 +20,6 @@
 
     <Button text="Salvar Categoria" onAction="#aoSalvar" maxWidth="Infinity"
             style="-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-weight: bold;"/>
+
+    <Button maxWidth="Infinity" onAction="#abrirListaCategorias" style="-fx-background-color: transparent; -fx-border-color: #3498db; -fx-text-fill: #3498db; -fx-border-radius: 3px; -fx-cursor: hand;" text="Ver Todas as Categorias" />
 </VBox>

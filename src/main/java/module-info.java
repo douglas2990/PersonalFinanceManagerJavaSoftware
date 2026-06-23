@@ -7,6 +7,7 @@ module org.example {
     requires org.apache.poi.poi;
     requires org.apache.poi.ooxml;
     requires java.net.http;
+    requires java.desktop;
 
     // Adicione estas linhas:
     requires com.fasterxml.jackson.databind;

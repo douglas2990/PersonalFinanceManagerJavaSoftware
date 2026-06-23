@@ -43,16 +43,33 @@ public class SqliteGastoAdapter implements GastoRepositoryAPI {
         return new Categoria("Desconhecida");
     }
 
+    // === CORREÇÃO: Implementação correta do novo contrato da Interface ===
     @Override
-    public void salvarMetodo(MetodoPagamento metodo) { getRepo().salvarMetodo(metodo); }
+    public void salvarMetodo(MetodoPagamentoApi metodo) {
+        // Converte o objeto rico da API para o modelo antigo que o SQLite local espera receber
+        MetodoPagamento antigo = new MetodoPagamento(metodo.getNome(), metodo.getDiaVencimento());
+        getRepo().salvarMetodo(antigo);
+    }
 
+    // === CORREÇÃO: Adequação do retorno para List<MetodoPagamentoApi> ===
     @Override
-    public List<MetodoPagamento> buscarTodosMetodos() { return getRepo().buscarTodosMetodos(); }
+    public List<MetodoPagamentoApi> buscarTodosMetodos() {
+        // Pega a lista antiga do SQLite
+        List<MetodoPagamento> metodosLocais = getRepo().buscarTodosMetodos();
+        List<MetodoPagamentoApi> listaMapeada = new ArrayList<>();
 
+        // Converte cada item para o novo MetodoPagamentoApi aplicando uma cor padrão branca
+        for (MetodoPagamento m : metodosLocais) {
+            listaMapeada.add(new MetodoPagamentoApi(0, m.getNome(), m.getDiaVencimento(), "#FFFFFF"));
+        }
+        return listaMapeada;
+    }
+
+    // === CORREÇÃO: Adequação do retorno para MetodoPagamentoApi ===
     @Override
-    public MetodoPagamento buscarMetodoPorId(int id) {
-        // Fallback seguro já que a classe de Domínio MetodoPagamento não possui getId() exposto
-        return new MetodoPagamento("Desconhecido", 0);
+    public MetodoPagamentoApi buscarMetodoPorId(int id) {
+        // Caso use o banco local, cria o objeto esperado pela assinatura com valores default
+        return new MetodoPagamentoApi(id, "Desconhecido", 0, "#FFFFFF");
     }
 
     @Override

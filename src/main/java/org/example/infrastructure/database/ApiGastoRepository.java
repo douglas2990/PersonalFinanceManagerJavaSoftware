@@ -35,11 +35,9 @@ public class ApiGastoRepository implements GastoRepositoryAPI {
             payload.put("valor", gasto.getValor());
             payload.put("data", gasto.getData().toString());
 
-            // --- A CORREÇÃO ESTÁ AQUI: Enviamos os textos simples que o seu banco C# exige ---
             payload.put("categoria", gasto.getCategoria().getNome());
             payload.put("metodo", gasto.getMetodo().getNome());
 
-            // Mantemos os IDs por precaução (caso você mude a estrutura do C# no futuro)
             payload.put("categoriaId", categoriaId);
             payload.put("CategoriaId", categoriaId);
             payload.put("metodoId", metodoId);
@@ -110,7 +108,6 @@ public class ApiGastoRepository implements GastoRepositoryAPI {
         }
     }
 
-    // --- O PULO DO GATO: Processamento à prova de falhas ---
     private Gasto converterJsonNode(JsonNode node) {
         int id = getAsInt(node, "id", "Id", "ID");
         String descricao = getAsText(node, "descricao", "Descricao");
@@ -122,7 +119,7 @@ public class ApiGastoRepository implements GastoRepositoryAPI {
         int totalParcelas = getAsInt(node, "totalParcelas", "TotalParcelas");
         int parcelaAtual = getAsInt(node, "parcelaAtual", "ParcelaAtual");
 
-        // 1. Resolve a Categoria (Prioridade: String, depois busca por ID)
+        // 1. Resolve a Categoria
         Categoria cat = null;
         String nomeCat = getAsText(node, "categoria", "Categoria");
         if (!nomeCat.isEmpty()) {
@@ -133,21 +130,23 @@ public class ApiGastoRepository implements GastoRepositoryAPI {
         }
         if (cat == null) cat = new Categoria("Sem Categoria");
 
-        // 2. Resolve o Método (Prioridade: String, depois busca por ID)
+        // 2. Resolve o Método (Adaptação para buscarMetodoPorId que agora retorna MetodoPagamentoApi)
         MetodoPagamento met = null;
         String nomeMet = getAsText(node, "metodo", "Metodo");
         if (!nomeMet.isEmpty()) {
             met = new MetodoPagamento(nomeMet, 0);
         } else {
             int metId = getAsInt(node, "metodoId", "MetodoId", "metodoPagamentoId", "MetodoPagamentoId");
-            if (metId > 0) met = buscarMetodoPorId(metId);
+            if (metId > 0) {
+                MetodoPagamentoApi apiMet = buscarMetodoPorId(metId);
+                met = new MetodoPagamento(apiMet.getNome(), apiMet.getDiaVencimento());
+            }
         }
         if (met == null) met = new MetodoPagamento("Sem Pagamento", 0);
 
         return new Gasto(id, descricao, valor, data, cat, met, false, totalParcelas, parcelaAtual);
     }
 
-    // --- FUNÇÕES CAÇADORAS (Ignoram Case Sensitive do JSON) ---
     private int getAsInt(JsonNode node, String... keys) {
         for (String k : keys) if (node.has(k) && !node.get(k).isNull()) return node.get(k).asInt();
         return 0;
@@ -160,12 +159,7 @@ public class ApiGastoRepository implements GastoRepositoryAPI {
         for (String k : keys) if (node.has(k) && !node.get(k).isNull()) return node.get(k).asDouble();
         return 0.0;
     }
-    private JsonNode getAsNode(JsonNode node, String... keys) {
-        for (String k : keys) if (node.has(k) && !node.get(k).isNull()) return node.get(k);
-        return null;
-    }
 
-    // --- Restante do código ---
     @Override
     public List<Categoria> buscarTodasCategorias() {
         try {
@@ -190,29 +184,29 @@ public class ApiGastoRepository implements GastoRepositoryAPI {
         } catch (Exception e) { return new Categoria("Erro"); }
     }
 
+    // === ATUALIZADO: Retorna diretamente os dados ricos da API com o Hexadecimal da cor ===
     @Override
-    public List<MetodoPagamento> buscarTodosMetodos() {
+    public List<MetodoPagamentoApi> buscarTodosMetodos() {
         try {
             HttpRequest request = HttpRequest.newBuilder().uri(URI.create(baseUrlMetodos)).GET().build();
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() != 200) return new ArrayList<>();
 
-            List<MetodoPagamentoApi> dtos = objectMapper.readValue(response.body(), new TypeReference<>(){});
-            return dtos.stream().map(d -> new MetodoPagamento(d.getNome(), d.getDiaVencimento())).toList();
+            return objectMapper.readValue(response.body(), new TypeReference<>(){});
         } catch (Exception e) { return new ArrayList<>(); }
     }
 
+    // === ATUALIZADO: Retorna o MetodoPagamentoApi ===
     @Override
-    public MetodoPagamento buscarMetodoPorId(int id) {
+    public MetodoPagamentoApi buscarMetodoPorId(int id) {
         try {
             HttpRequest request = HttpRequest.newBuilder().uri(URI.create(baseUrlMetodos)).GET().build();
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             List<MetodoPagamentoApi> dtos = objectMapper.readValue(response.body(), new TypeReference<>(){});
 
             return dtos.stream().filter(m -> m.getId() == id).findFirst()
-                    .map(m -> new MetodoPagamento(m.getNome(), m.getDiaVencimento()))
-                    .orElse(new MetodoPagamento("Desconhecido", 0));
-        } catch (Exception e) { return new MetodoPagamento("Erro", 0); }
+                    .orElse(new MetodoPagamentoApi(0, "Desconhecido", 0, "#FFFFFF"));
+        } catch (Exception e) { return new MetodoPagamentoApi(0, "Erro", 0, "#FFFFFF"); }
     }
 
     @Override
@@ -229,18 +223,29 @@ public class ApiGastoRepository implements GastoRepositoryAPI {
         } catch (Exception e) { e.printStackTrace(); }
     }
 
+    // === ATUALIZADO: Envia o payload completo incluindo a propriedade 'cor' para a API C# ===
     @Override
-    public void salvarMetodo(MetodoPagamento m) {
+    public void salvarMetodo(MetodoPagamentoApi m) {
         try {
             Map<String, Object> payload = new HashMap<>();
-            payload.put("id", 0);
+            payload.put("id", m.getId());
             payload.put("nome", m.getNome());
             payload.put("diaVencimento", m.getDiaVencimento());
+            payload.put("cor", m.getCor()); // Inserção da propriedade dinâmica de cor
+
             String json = objectMapper.writeValueAsString(payload);
 
-            HttpRequest request = HttpRequest.newBuilder().uri(URI.create(baseUrlMetodos))
-                    .header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(json)).build();
-            httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            boolean ehAtualizacao = (m.getId() > 0);
+            String url = ehAtualizacao ? baseUrlMetodos + "/" + m.getId() : baseUrlMetodos;
+
+            HttpRequest.Builder builder = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .header("Content-Type", "application/json");
+
+            if (ehAtualizacao) builder.PUT(HttpRequest.BodyPublishers.ofString(json));
+            else builder.POST(HttpRequest.BodyPublishers.ofString(json));
+
+            httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
         } catch (Exception e) { e.printStackTrace(); }
     }
 

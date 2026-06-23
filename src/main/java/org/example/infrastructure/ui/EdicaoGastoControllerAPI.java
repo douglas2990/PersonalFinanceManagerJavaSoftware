@@ -7,6 +7,7 @@ import javafx.util.StringConverter;
 import org.example.domain.entity.Categoria;
 import org.example.domain.entity.Gasto;
 import org.example.domain.entity.MetodoPagamento;
+import org.example.domain.entity.MetodoPagamentoApi;
 import org.example.domain.repository.GastoRepositoryAPI;
 import org.example.domain.repository.RepositoryFactory;
 import java.time.LocalDate;
@@ -30,7 +31,7 @@ public class EdicaoGastoControllerAPI {
         });
 
         cbMetodo.getItems().addAll(repository.buscarTodosMetodos().stream()
-                .map(MetodoPagamento::getNome).toList());
+                .map(MetodoPagamentoApi::getNome).toList());
     }
 
     public void setGasto(Gasto gasto) {

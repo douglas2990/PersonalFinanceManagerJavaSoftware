@@ -11,7 +11,8 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import org.example.domain.entity.Categoria;
 import org.example.domain.entity.Gasto;
-import org.example.domain.entity.MetodoPagamento;
+import org.example.domain.entity.MetodoPagamento; // Importado para construir o Gasto original
+import org.example.domain.entity.MetodoPagamentoApi; // Importado para ler o Repositório e as Cores
 import org.example.domain.repository.GastoRepositoryAPI;
 import org.example.domain.repository.RepositoryFactory;
 import org.example.usecase.GerenciarGastoApiUseCase;
@@ -42,6 +43,9 @@ public class MainControllerAPI {
     private final GastoRepositoryAPI repository = RepositoryFactory.getRepository();
     private final GerenciarGastoApiUseCase useCase = new GerenciarGastoApiUseCase(repository);
 
+    // Lista local para fazer a ponte de cores entre MetodoPagamento e MetodoPagamentoApi
+    private List<MetodoPagamentoApi> metodosDaApi;
+
     @FXML
     public void initialize() {
         dpData.setValue(LocalDate.now());
@@ -57,7 +61,7 @@ public class MainControllerAPI {
 
         configurarTabela();
         carregarCategoriasNoCombo();
-        carregarMetodosNoCombo();
+        carregarMetodosNoCombo(); // Carrega os métodos e popula a lista 'metodosDaApi' antes da tabela renderizar
         atualizarTabela();
     }
 
@@ -73,6 +77,45 @@ public class MainControllerAPI {
 
         colCategoria.setCellValueFactory(cellData -> new SimpleStringProperty(
                 cellData.getValue().getCategoria() != null ? cellData.getValue().getCategoria().getNome() : "N/A"));
+
+// LÓGICA DE CORES AUTOMÁTICA (Fundo + Texto Claro/Escuro)
+        tableGastos.setRowFactory(tv -> new TableRow<>() {
+            @Override
+            protected void updateItem(Gasto gasto, boolean empty) {
+                super.updateItem(gasto, empty);
+
+                if (empty || gasto == null || gasto.getMetodo() == null) {
+                    // Reseta para o padrão se a linha for vazia
+                    setStyle("-fx-background-color: transparent; -fx-text-background-color: black; -fx-font-weight: normal;");
+                } else {
+                    String corFundo = buscarCorPorNome(gasto.getMetodo().getNome());
+                    boolean fundoEscuro = false;
+
+                    try {
+                        // Converte o Hexadecimal para a classe Color do JavaFX
+                        javafx.scene.paint.Color cor = javafx.scene.paint.Color.web(corFundo);
+
+                        // Fórmula padrão de Luminância para saber se a cor é escura
+                        double luminancia = 0.2126 * cor.getRed() + 0.7152 * cor.getGreen() + 0.0722 * cor.getBlue();
+
+                        // Se a luminância for menor que 0.5, a cor é considerada escura
+                        fundoEscuro = luminancia < 0.5;
+                    } catch (Exception e) {
+                        fundoEscuro = false; // Em caso de erro, assume que é clara
+                    }
+
+                    // Define a cor da letra e o negrito com base no fundo
+                    String corTexto = fundoEscuro ? "white" : "black";
+                    String pesoFonte = fundoEscuro ? "bold" : "normal";
+
+                    // Aplica os estilos
+                    // Dica: no JavaFX, para pintar o texto de toda a linha na tabela, usamos -fx-text-background-color
+                    setStyle("-fx-background-color: " + corFundo + "; " +
+                            "-fx-text-background-color: " + corTexto + "; " +
+                            "-fx-font-weight: " + pesoFonte + ";");
+                }
+            }
+        });
 
         // Coluna de Ações
         colAcoes.setCellFactory(param -> new TableCell<>() {
@@ -92,6 +135,8 @@ public class MainControllerAPI {
         });
     }
 
+
+
     private void confirmarExclusao(Gasto gasto) {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "Excluir " + gasto.getDescricao() + "?", ButtonType.OK, ButtonType.CANCEL);
         if (alert.showAndWait().get() == ButtonType.OK) {
@@ -108,7 +153,6 @@ public class MainControllerAPI {
 
             System.out.println("--- INICIANDO SALVAMENTO ---");
 
-            // Validação de segurança
             if (nomeCategoria == null || nomeCategoria.trim().isEmpty() || nomeMetodo == null || nomeMetodo.trim().isEmpty()) {
                 Alert alert = new Alert(Alert.AlertType.WARNING, "Selecione categoria e método!");
                 alert.showAndWait();
@@ -120,8 +164,6 @@ public class MainControllerAPI {
             String descricaoBase = txtDescricao.getText().trim();
             LocalDate dataBase = dpData.getValue();
 
-            // --- LÓGICA INTELIGENTE DO CARTÃO DE CRÉDITO ---
-            // É cartão se: a caixa estiver marcada, se for parcelado, ou se o nome do método contiver a palavra "cartão"
             boolean isCartao = chkCartaoCredito.isSelected()
                     || chkParcelado.isSelected()
                     || nomeMetodo.toLowerCase().contains("cartão");
@@ -130,19 +172,14 @@ public class MainControllerAPI {
 
             int avancoInicial = 0;
             if (isCartao && !isCartaoNaoVirou) {
-                // Se for cartão e a fatura já virou, a primeira parcela pula 1 mês pra frente (Julho)
                 avancoInicial = 1;
             }
 
-            // LAÇO DE REPETIÇÃO: Gera um gasto para cada parcela
             for (int i = 1; i <= totalParcelas; i++) {
-
-                // Adiciona a numeração da parcela no nome apenas se for parcelado (Ex: Barracuda 1/18)
                 String descFinal = totalParcelas > 1 ? descricaoBase + " " + i + "/" + totalParcelas : descricaoBase;
-
-                // Aplica a matemática do avanço inicial da fatura + o mês de cada parcela
                 LocalDate dataFinal = dataBase.plusMonths(avancoInicial + (i - 1));
 
+                // CORREÇÃO DA LINHA 163: Instancia o MetodoPagamento esperado pelo domínio do Gasto
                 Gasto gasto = new Gasto(
                         descFinal,
                         valor,
@@ -155,13 +192,10 @@ public class MainControllerAPI {
                 );
 
                 System.out.println("Enviando parcela: " + descFinal + " para a data " + dataFinal);
-
-                // Salva na API
                 useCase.registrarGasto(gasto);
             }
 
             System.out.println("--- SALVAMENTO CONCLUÍDO ---");
-
             limparCampos();
             atualizarTabela();
 
@@ -186,8 +220,10 @@ public class MainControllerAPI {
         cbCategoria.getItems().setAll(repository.buscarTodasCategorias().stream().map(Categoria::getNome).toList());
     }
 
+    // CORREÇÃO DA LINHA 201: Adaptação à nova assinatura List<MetodoPagamentoApi> do repositório
     private void carregarMetodosNoCombo() {
-        cbMetodo.getItems().setAll(repository.buscarTodosMetodos().stream().map(MetodoPagamento::getNome).toList());
+        metodosDaApi = repository.buscarTodosMetodos();
+        cbMetodo.getItems().setAll(metodosDaApi.stream().map(MetodoPagamentoApi::getNome).toList());
     }
 
     @FXML
@@ -204,7 +240,11 @@ public class MainControllerAPI {
     }
 
     @FXML
-    private void abrirCadastroMetodos() { abrirJanela("/metodos_view_api.fxml", "Cadastro de Métodos"); carregarMetodosNoCombo(); }
+    private void abrirCadastroMetodos() {
+        abrirJanela("/metodos_view_api.fxml", "Cadastro de Métodos"); carregarMetodosNoCombo();
+        carregarMetodosNoCombo(); // Atualiza a lista com a nova cor
+        atualizarTabela();
+    }
 
     @FXML
     private void abrirCadastroCategorias() { abrirJanela("/categorias_view_api.fxml", "Cadastro de Categorias"); carregarCategoriasNoCombo(); }
@@ -250,9 +290,9 @@ public class MainControllerAPI {
 
     @FXML
     protected void aoAtualizar() {
-        atualizarTabela();            // Recarrega a lista de gastos da API
-        carregarCategoriasNoCombo();  // Recarrega as categorias da API
-        carregarMetodosNoCombo();     // Recarrega os métodos de pagamento da API
+        atualizarTabela();
+        carregarCategoriasNoCombo();
+        carregarMetodosNoCombo();
         System.out.println("Tela principal updated com sucesso!");
     }
 
@@ -270,5 +310,17 @@ public class MainControllerAPI {
             stage.showAndWait();
             atualizarTabela();
         } catch (IOException e) { e.printStackTrace(); }
+    }
+
+    private String buscarCorPorNome(String nomeMetodo) {
+        if (metodosDaApi != null && nomeMetodo != null) {
+            for (MetodoPagamentoApi m : metodosDaApi) {
+                if (m.getNome().trim().equalsIgnoreCase(nomeMetodo.trim())) {
+                    return m.getCor(); // Ex: "#ff0000"
+                }
+            }
+        }
+        System.out.println("Cor não encontrada para " + nomeMetodo + ", usando branco.");
+        return "#FFFFFF"; // Cor padrão branco
     }
 }

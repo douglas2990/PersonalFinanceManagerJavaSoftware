@@ -6,24 +6,26 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.layout.HBox;
 import javafx.stage.DirectoryChooser;
-import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.xssf.usermodel.DefaultIndexedColorMap;
+import org.apache.poi.xssf.usermodel.XSSFCellStyle;
+import org.apache.poi.xssf.usermodel.XSSFColor;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.example.domain.entity.Categoria;
 import org.example.domain.entity.Gasto;
-import org.example.domain.entity.MetodoPagamento;
+import org.example.domain.entity.MetodoPagamentoApi;
 import org.example.domain.repository.GastoRepositoryAPI;
 import org.example.domain.repository.RepositoryFactory;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class TabelaExpandidaControllerAPI {
 
@@ -34,13 +36,18 @@ public class TabelaExpandidaControllerAPI {
     @FXML private Spinner<Integer> spFiltroAnoFull;
     @FXML private Label lblTotalFull;
 
-    // A Fábrica decide se usa o Adapter do SQLite ou a ApiGastoRepository
     private final GastoRepositoryAPI repository = RepositoryFactory.getRepository();
+
+    // Lista para guardar as cores dos métodos em memória
+    private List<MetodoPagamentoApi> metodosDaApi;
 
     @FXML
     public void initialize() {
         cbFiltroMesFull.getItems().addAll("Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
                 "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro");
+
+        // Carrega os métodos para sabermos as cores
+        metodosDaApi = repository.buscarTodosMetodos();
 
         configurarColunas();
 
@@ -49,7 +56,7 @@ public class TabelaExpandidaControllerAPI {
     }
 
     private void configurarColunas() {
-        tableGastosFull.setEditable(false); // Agora a edição é via Modal
+        tableGastosFull.setEditable(false);
 
         colData.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getData().toString()));
         colDescricao.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getDescricao()));
@@ -75,6 +82,36 @@ public class TabelaExpandidaControllerAPI {
                 setGraphic(empty ? null : container);
             }
         });
+
+        // 1. APLICANDO AS CORES NA TABELA EXPANDIDA (Igual à tela principal)
+        tableGastosFull.setRowFactory(tv -> new TableRow<>() {
+            @Override
+            protected void updateItem(Gasto gasto, boolean empty) {
+                super.updateItem(gasto, empty);
+
+                if (empty || gasto == null || gasto.getMetodo() == null) {
+                    setStyle("-fx-background-color: transparent; -fx-text-background-color: black; -fx-font-weight: normal;");
+                } else {
+                    String corFundo = buscarCorPorNome(gasto.getMetodo().getNome());
+                    boolean fundoEscuro = false;
+
+                    try {
+                        javafx.scene.paint.Color cor = javafx.scene.paint.Color.web(corFundo);
+                        double luminancia = 0.2126 * cor.getRed() + 0.7152 * cor.getGreen() + 0.0722 * cor.getBlue();
+                        fundoEscuro = luminancia < 0.5;
+                    } catch (Exception e) {
+                        fundoEscuro = false;
+                    }
+
+                    String corTexto = fundoEscuro ? "white" : "black";
+                    String pesoFonte = fundoEscuro ? "bold" : "normal";
+
+                    setStyle("-fx-background-color: " + corFundo + "; " +
+                            "-fx-text-background-color: " + corTexto + "; " +
+                            "-fx-font-weight: " + pesoFonte + ";");
+                }
+            }
+        });
     }
 
     private void atualizarDados() {
@@ -91,7 +128,6 @@ public class TabelaExpandidaControllerAPI {
     private void removerGasto(Gasto gasto) {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "Excluir " + gasto.getDescricao() + "?", ButtonType.YES, ButtonType.NO);
         if (alert.showAndWait().get() == ButtonType.YES) {
-            // Este método agora existe na interface e no seu Adapter!
             repository.removerGasto(gasto.getId());
             atualizarDados();
         }
@@ -106,24 +142,22 @@ public class TabelaExpandidaControllerAPI {
             return;
         }
 
-        // 1. Criar o seletor de pasta
         DirectoryChooser directoryChooser = new DirectoryChooser();
         directoryChooser.setTitle("Selecionar pasta para salvar o relatório");
         java.io.File selectedDirectory = directoryChooser.showDialog(tableGastosFull.getScene().getWindow());
 
         if (selectedDirectory != null) {
-            // 2. Definir o nome do arquivo automaticamente
             String nomeArquivo = "Gastos_" + cbFiltroMesFull.getValue() + "_" + spFiltroAnoFull.getValue() + ".xlsx";
             java.io.File file = new java.io.File(selectedDirectory, nomeArquivo);
 
             try (Workbook workbook = new XSSFWorkbook()) {
                 Sheet sheet = workbook.createSheet("Gastos");
 
-                // Estilo para o cabeçalho
+                // Estilo padrão para o cabeçalho
                 CellStyle headerStyle = workbook.createCellStyle();
-                Font font = workbook.createFont();
-                font.setBold(true);
-                headerStyle.setFont(font);
+                Font headerFont = workbook.createFont();
+                headerFont.setBold(true);
+                headerStyle.setFont(headerFont);
 
                 Row header = sheet.createRow(0);
                 String[] cols = {"Data", "Descrição", "Categoria", "Valor", "Pagamento"};
@@ -133,25 +167,69 @@ public class TabelaExpandidaControllerAPI {
                     cell.setCellStyle(headerStyle);
                 }
 
+                // 2. CACHE DE ESTILOS DE CORES (O Excel tem limite de estilos por arquivo)
+                Map<String, CellStyle> styleCache = new HashMap<>();
+
                 int r = 1;
                 for (Gasto g : lista) {
                     Row row = sheet.createRow(r++);
-                    row.createCell(0).setCellValue(g.getData().toString());
-                    row.createCell(1).setCellValue(g.getDescricao());
-                    row.createCell(2).setCellValue(g.getCategoria().getNome());
-                    row.createCell(3).setCellValue(g.getValor());
-                    row.createCell(4).setCellValue(g.getMetodo().getNome());
+
+                    // Descobre a cor e calcula o claro/escuro
+                    String corHex = buscarCorPorNome(g.getMetodo().getNome());
+                    CellStyle rowStyle = styleCache.get(corHex);
+
+                    if (rowStyle == null) {
+                        rowStyle = workbook.createCellStyle();
+                        try {
+                            // Converte HEX para a cor nativa do Java (AWT)
+                            java.awt.Color awtColor = java.awt.Color.decode(corHex);
+
+                            // Aplica o fundo customizado no Excel
+                            XSSFColor xssfColor = new XSSFColor(awtColor, new DefaultIndexedColorMap());
+                            ((XSSFCellStyle) rowStyle).setFillForegroundColor(xssfColor);
+                            rowStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+                            // Matemática de luminância (valores de 0.0 a 1.0)
+                            double luminancia = 0.2126 * (awtColor.getRed() / 255.0) +
+                                    0.7152 * (awtColor.getGreen() / 255.0) +
+                                    0.0722 * (awtColor.getBlue() / 255.0);
+
+                            Font rowFont = workbook.createFont();
+                            if (luminancia < 0.5) {
+                                rowFont.setColor(IndexedColors.WHITE.getIndex());
+                                rowFont.setBold(true);
+                            } else {
+                                rowFont.setColor(IndexedColors.BLACK.getIndex());
+                            }
+                            rowStyle.setFont(rowFont);
+
+                        } catch (Exception e) {
+                            // Se a conversão de cor falhar, deixa em branco
+                        }
+                        // Guarda no cache para não recriar na próxima linha igual
+                        styleCache.put(corHex, rowStyle);
+                    }
+
+                    // Preenche as células e aplica o estilo colorido da linha
+                    Cell[] cells = new Cell[5];
+                    cells[0] = row.createCell(0); cells[0].setCellValue(g.getData().toString());
+                    cells[1] = row.createCell(1); cells[1].setCellValue(g.getDescricao());
+                    cells[2] = row.createCell(2); cells[2].setCellValue(g.getCategoria().getNome());
+                    cells[3] = row.createCell(3); cells[3].setCellValue(g.getValor());
+                    cells[4] = row.createCell(4); cells[4].setCellValue(g.getMetodo().getNome());
+
+                    for (Cell c : cells) {
+                        c.setCellStyle(rowStyle);
+                    }
                 }
 
-                // Ajustar largura das colunas
                 for (int i = 0; i < cols.length; i++) sheet.autoSizeColumn(i);
 
                 try (FileOutputStream out = new FileOutputStream(file)) {
                     workbook.write(out);
                 }
 
-                // Feedback de sucesso
-                Alert alert = new Alert(Alert.AlertType.INFORMATION, "Arquivo salvo em: " + file.getAbsolutePath());
+                Alert alert = new Alert(Alert.AlertType.INFORMATION, "Arquivo salvo com sucesso!");
                 alert.showAndWait();
 
             } catch (Exception e) {
@@ -160,6 +238,17 @@ public class TabelaExpandidaControllerAPI {
                 alert.showAndWait();
             }
         }
+    }
+
+    // Auxiliar: Busca a cor salva na API com base no nome do método
+    private String buscarCorPorNome(String nomeMetodo) {
+        if (nomeMetodo == null || metodosDaApi == null) return "#FFFFFF";
+        for (MetodoPagamentoApi m : metodosDaApi) {
+            if (m.getNome().trim().equalsIgnoreCase(nomeMetodo.trim())) {
+                return m.getCor() != null ? m.getCor() : "#FFFFFF";
+            }
+        }
+        return "#FFFFFF";
     }
 
     @FXML
@@ -179,10 +268,10 @@ public class TabelaExpandidaControllerAPI {
         spFiltroAnoFull.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(2020, 2030, ano));
         atualizarDados();
     }
+
     @FXML
     private void aoAtualizar() {
-        atualizarDados(); // Recarrega a lista expandida com base no mês/ano selecionados
-        System.out.println("Tabela expandida atualizada!");
+        atualizarDados();
     }
 
     private void abrirJanelaEdicao(Gasto gasto) {
@@ -197,8 +286,7 @@ public class TabelaExpandidaControllerAPI {
             controller.setGasto(gasto);
 
             stage.showAndWait();
-            atualizarDados(); // Atualiza a tabela ao fechar o modal
+            atualizarDados();
         } catch (IOException e) { e.printStackTrace(); }
     }
-
 }
