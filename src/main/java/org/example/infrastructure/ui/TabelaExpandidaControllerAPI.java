@@ -27,6 +27,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import java.time.format.DateTimeFormatter;
+
 public class TabelaExpandidaControllerAPI {
 
     @FXML private TableView<Gasto> tableGastosFull;
@@ -134,7 +136,7 @@ public class TabelaExpandidaControllerAPI {
     }
 
     @FXML
-    private void exportarParaExcel() {
+    private void exportarParaExcel2() {
         List<Gasto> lista = tableGastosFull.getItems();
         if (lista.isEmpty()) {
             Alert alert = new Alert(Alert.AlertType.WARNING, "Não há dados para exportar!");
@@ -288,5 +290,247 @@ public class TabelaExpandidaControllerAPI {
             stage.showAndWait();
             atualizarDados();
         } catch (IOException e) { e.printStackTrace(); }
+    }
+
+    @FXML
+    private void exportarParaExcel3() {
+        List<Gasto> lista = tableGastosFull.getItems();
+        if (lista.isEmpty()) {
+            Alert alert = new Alert(Alert.AlertType.WARNING, "Não há dados para exportar!");
+            alert.showAndWait();
+            return;
+        }
+
+        DirectoryChooser directoryChooser = new DirectoryChooser();
+        directoryChooser.setTitle("Selecionar pasta para salvar o relatório");
+        java.io.File selectedDirectory = directoryChooser.showDialog(tableGastosFull.getScene().getWindow());
+
+        if (selectedDirectory != null) {
+            String nomeArquivo = "Gastos_" + cbFiltroMesFull.getValue() + "_" + spFiltroAnoFull.getValue() + ".xlsx";
+            java.io.File file = new java.io.File(selectedDirectory, nomeArquivo);
+
+            try (Workbook workbook = new XSSFWorkbook()) {
+                Sheet sheet = workbook.createSheet("Gastos");
+
+                // Estilo padrão para o cabeçalho
+                CellStyle headerStyle = workbook.createCellStyle();
+                Font headerFont = workbook.createFont();
+                headerFont.setBold(true);
+                headerStyle.setFont(headerFont);
+
+                Row header = sheet.createRow(0);
+
+                // NOVA ORDEM DO CABEÇALHO
+                String[] cols = {"Descrição", "Valor", "Data", "Pagamento", "Categoria"};
+                for (int i = 0; i < cols.length; i++) {
+                    Cell cell = header.createCell(i);
+                    cell.setCellValue(cols[i]);
+                    cell.setCellStyle(headerStyle);
+                }
+
+                // CACHE DE ESTILOS DE CORES
+                Map<String, CellStyle> styleCache = new HashMap<>();
+
+                // FORMATADOR DE DATA NO PADRÃO BRASILEIRO
+                DateTimeFormatter formatadorData = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+                int r = 1;
+                for (Gasto g : lista) {
+                    Row row = sheet.createRow(r++);
+
+                    // Descobre a cor e calcula o claro/escuro
+                    String corHex = buscarCorPorNome(g.getMetodo().getNome());
+                    CellStyle rowStyle = styleCache.get(corHex);
+
+                    if (rowStyle == null) {
+                        rowStyle = workbook.createCellStyle();
+                        try {
+                            // Converte HEX para a cor nativa do Java (AWT)
+                            java.awt.Color awtColor = java.awt.Color.decode(corHex);
+
+                            // Aplica o fundo customizado no Excel
+                            XSSFColor xssfColor = new XSSFColor(awtColor, new DefaultIndexedColorMap());
+                            ((XSSFCellStyle) rowStyle).setFillForegroundColor(xssfColor);
+                            rowStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+                            // Matemática de luminância
+                            double luminancia = 0.2126 * (awtColor.getRed() / 255.0) +
+                                    0.7152 * (awtColor.getGreen() / 255.0) +
+                                    0.0722 * (awtColor.getBlue() / 255.0);
+
+                            Font rowFont = workbook.createFont();
+                            if (luminancia < 0.5) {
+                                rowFont.setColor(IndexedColors.WHITE.getIndex());
+                                rowFont.setBold(true);
+                            } else {
+                                rowFont.setColor(IndexedColors.BLACK.getIndex());
+                            }
+                            rowStyle.setFont(rowFont);
+
+                        } catch (Exception e) {
+                            // Se a conversão de cor falhar, deixa em branco
+                        }
+                        styleCache.put(corHex, rowStyle);
+                    }
+
+                    // PREENCHE AS CÉLULAS NA NOVA ORDEM E COM A DATA FORMATADA
+                    Cell[] cells = new Cell[5];
+                    cells[0] = row.createCell(0); cells[0].setCellValue(g.getDescricao());
+                    cells[1] = row.createCell(1); cells[1].setCellValue(g.getValor());
+
+                    String dataFormatada = g.getData().format(formatadorData);
+                    cells[2] = row.createCell(2); cells[2].setCellValue(dataFormatada);
+
+                    cells[3] = row.createCell(3); cells[3].setCellValue(g.getMetodo().getNome());
+                    cells[4] = row.createCell(4); cells[4].setCellValue(g.getCategoria().getNome());
+
+                    for (Cell c : cells) {
+                        c.setCellStyle(rowStyle);
+                    }
+                }
+
+                for (int i = 0; i < cols.length; i++) sheet.autoSizeColumn(i);
+
+                try (FileOutputStream out = new FileOutputStream(file)) {
+                    workbook.write(out);
+                }
+
+                Alert alert = new Alert(Alert.AlertType.INFORMATION, "Arquivo salvo com sucesso!");
+                alert.showAndWait();
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                Alert alert = new Alert(Alert.AlertType.ERROR, "Erro ao gerar Excel: " + e.getMessage());
+                alert.showAndWait();
+            }
+        }
+    }
+
+    @FXML
+    private void exportarParaExcel() {
+        List<Gasto> lista = tableGastosFull.getItems();
+        if (lista.isEmpty()) {
+            Alert alert = new Alert(Alert.AlertType.WARNING, "Não há dados para exportar!");
+            alert.showAndWait();
+            return;
+        }
+
+        DirectoryChooser directoryChooser = new DirectoryChooser();
+        directoryChooser.setTitle("Selecionar pasta para salvar o relatório");
+        java.io.File selectedDirectory = directoryChooser.showDialog(tableGastosFull.getScene().getWindow());
+
+        if (selectedDirectory != null) {
+            String nomeArquivo = "Gastos_" + cbFiltroMesFull.getValue() + "_" + spFiltroAnoFull.getValue() + ".xlsx";
+            java.io.File file = new java.io.File(selectedDirectory, nomeArquivo);
+
+            try (Workbook workbook = new XSSFWorkbook()) {
+                Sheet sheet = workbook.createSheet("Gastos");
+
+                // Estilo padrão para o cabeçalho
+                CellStyle headerStyle = workbook.createCellStyle();
+                Font headerFont = workbook.createFont();
+                headerFont.setBold(true);
+                headerStyle.setFont(headerFont);
+
+                Row header = sheet.createRow(0);
+
+                // Ordem do cabeçalho solicitada
+                String[] cols = {"Descrição", "Valor", "Data", "Pagamento", "Categoria"};
+                for (int i = 0; i < cols.length; i++) {
+                    Cell cell = header.createCell(i);
+                    cell.setCellValue(cols[i]);
+                    cell.setCellStyle(headerStyle);
+                }
+
+                // Cache de estilos de cores
+                Map<String, CellStyle> styleCache = new HashMap<>();
+
+                // Formatador de data no padrão brasileiro
+                DateTimeFormatter formatadorData = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+                int r = 1;
+                for (Gasto g : lista) {
+                    Row row = sheet.createRow(r++);
+
+                    // Descobre a cor e calcula o claro/escuro
+                    String corHex = buscarCorPorNome(g.getMetodo().getNome());
+                    CellStyle rowStyle = styleCache.get(corHex);
+
+                    if (rowStyle == null) {
+                        rowStyle = workbook.createCellStyle();
+                        try {
+                            // Converte HEX para a cor nativa do Java (AWT)
+                            java.awt.Color awtColor = java.awt.Color.decode(corHex);
+
+                            // Aplica o fundo customizado no Excel
+                            XSSFColor xssfColor = new XSSFColor(awtColor, new DefaultIndexedColorMap());
+                            ((XSSFCellStyle) rowStyle).setFillForegroundColor(xssfColor);
+                            rowStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+                            // Matemática de luminância
+                            double luminancia = 0.2126 * (awtColor.getRed() / 255.0) +
+                                    0.7152 * (awtColor.getGreen() / 255.0) +
+                                    0.0722 * (awtColor.getBlue() / 255.0);
+
+                            Font rowFont = workbook.createFont();
+                            if (luminancia < 0.5) {
+                                rowFont.setColor(IndexedColors.WHITE.getIndex());
+                                rowFont.setBold(true);
+                            } else {
+                                rowFont.setColor(IndexedColors.BLACK.getIndex());
+                            }
+                            rowStyle.setFont(rowFont);
+
+                        } catch (Exception e) {
+                            // Se a conversão falhar, mantém padrão
+                        }
+                        styleCache.put(corHex, rowStyle);
+                    }
+
+                    // Preenche as células na ordem: Descrição, Valor, Data, Pagamento, Categoria
+                    Cell[] cells = new Cell[5];
+
+                    // 1. Descrição
+                    cells[0] = row.createCell(0);
+                    cells[0].setCellValue(g.getDescricao());
+
+                    // 2. Valor formatado em Reais (ex: R$ 100,00)
+                    String valorFormatado = String.format(new java.util.Locale("pt", "BR"), "R$ %.2f", g.getValor());
+                    cells[1] = row.createCell(1);
+                    cells[1].setCellValue(valorFormatado);
+
+                    // 3. Data formatada (ex: 11/11/2026)
+                    String dataFormatada = g.getData().format(formatadorData);
+                    cells[2] = row.createCell(2);
+                    cells[2].setCellValue(dataFormatada);
+
+                    // 4. Pagamento
+                    cells[3] = row.createCell(3);
+                    cells[3].setCellValue(g.getMetodo().getNome());
+
+                    // 5. Categoria
+                    cells[4] = row.createCell(4);
+                    cells[4].setCellValue(g.getCategoria().getNome());
+
+                    for (Cell c : cells) {
+                        c.setCellStyle(rowStyle);
+                    }
+                }
+
+                for (int i = 0; i < cols.length; i++) sheet.autoSizeColumn(i);
+
+                try (FileOutputStream out = new FileOutputStream(file)) {
+                    workbook.write(out);
+                }
+
+                Alert alert = new Alert(Alert.AlertType.INFORMATION, "Arquivo salvo com sucesso!");
+                alert.showAndWait();
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                Alert alert = new Alert(Alert.AlertType.ERROR, "Erro ao gerar Excel: " + e.getMessage());
+                alert.showAndWait();
+            }
+        }
     }
 }

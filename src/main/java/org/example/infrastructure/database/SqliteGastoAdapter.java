@@ -101,4 +101,12 @@ public class SqliteGastoAdapter implements GastoRepositoryAPI {
     public double buscarMetaPorCategoria(String categoria, int mes, int ano) {
         return getRepo().buscarMetaPorCategoria(categoria, mes, ano);
     }
+
+    @Override
+    public boolean atualizarMetodo(MetodoPagamentoApi metodo) {
+        // Se você tiver um método atualizar no seu SQLite, chame-o aqui.
+        // Por enquanto, retornamos false ou apenas ignoramos, pois o foco atual é a API.
+        System.out.println("Atualização de método via SQLite ainda não implementada.");
+        return false;
+    }
 }

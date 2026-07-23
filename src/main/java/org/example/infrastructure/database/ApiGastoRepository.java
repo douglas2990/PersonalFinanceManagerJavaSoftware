@@ -14,13 +14,21 @@ import java.util.*;
 
 public class ApiGastoRepository implements GastoRepositoryAPI {
 
-    private final String baseUrlGastos = "http://192.168.15.31:5123/api/gastos";
-    private final String baseUrlCategorias = "http://192.168.15.31:5123/api/categorias";
-    private final String baseUrlMetodos = "http://192.168.15.31:5123/api/metodos";
+    //private final String baseUrlGastos = "http://192.168.15.31:5123/api/gastos";
+    private final String baseUrlGastos = "http://192.168.15.15:5123/api/gastos";
+    //private final String baseUrlCategorias = "http://192.168.15.31:5123/api/categorias";
+    private final String baseUrlCategorias = "http://192.168.15.15:5123/api/categorias";
+    //private final String baseUrlMetodos = "http://192.168.15.31:5123/api/metodos";
+    private final String baseUrlMetodos = "http://192.168.15.15:5123/api/metodos";
+
+    //private final String baseUrlRelatorios = "http://192.168.15.31:5123/api/relatorios";
+    private final String baseUrlRelatorios = "http://192.168.15.15:5123/api/relatorios";
+
 
     private final HttpClient httpClient = createInsecureClient();
     private final ObjectMapper objectMapper = new ObjectMapper()
             .registerModule(new JavaTimeModule())
+            .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES)
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     @Override
@@ -279,12 +287,119 @@ public class ApiGastoRepository implements GastoRepositoryAPI {
         return objectMapper.readValue(response.body(), new TypeReference<>(){});
     }
 
-    @Override public double buscarMetaFinal(String c, int m, int a) { return 0; }
-    @Override public double buscarSomaGastosPorCategoria(String c, int m, int a) { return 0; }
-    @Override public double buscarMetaAnual(String c, int a) { return 0; }
-    @Override public double buscarMetaPorCategoria(String c, int m, int a) { return 0; }
-    @Override public void salvarOuAtualizarMeta(String c, int m, int a, double v) {}
-    @Override public void salvarOuAtualizarMetaAnual(String c, int a, double v) {}
+    @Override
+    public double buscarMetaFinal(String c, int m, int a) {
+        return extrairDoBalanco(c, m, a, "metaMes");
+    }
+
+    @Override
+    public double buscarSomaGastosPorCategoria(String c, int m, int a) {
+        return extrairDoBalanco(c, m, a, "gastoMes");
+    }
+
+    @Override
+    public double buscarMetaPorCategoria(String c, int m, int a) {
+        return extrairDoBalanco(c, m, a, "metaMes");
+    }
+
+    @Override
+    public double buscarMetaAnual(String c, int a) {
+        // Assume a meta configurada em Janeiro como base para o display anual
+        return extrairDoBalanco(c, 1, a, "metaMes");
+    }
+
+    private double extrairDoBalanco(String nomeCategoria, int mes, int ano, String campo) {
+        try {
+            String url = baseUrlRelatorios + "/balanco?mes=" + mes + "&ano=" + ano;
+            HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url)).GET().build();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                JsonNode root = objectMapper.readTree(response.body());
+                for (JsonNode node : root) {
+                    if (node.path("nomeCategoria").asText().equalsIgnoreCase(nomeCategoria)) {
+                        return node.path(campo).asDouble();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Erro ao buscar balanço na API: " + e.getMessage());
+        }
+        return 0.0;
+    }
+
+    @Override
+    public boolean atualizarMetodo(MetodoPagamentoApi m) {
+        try {
+            // Monta o payload para o C#
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("id", m.getId());
+            payload.put("nome", m.getNome());
+            payload.put("diaVencimento", m.getDiaVencimento());
+            payload.put("cor", m.getCor());
+
+            String json = objectMapper.writeValueAsString(payload);
+            String url = baseUrlMetodos + "/" + m.getId();
+
+            // === LÓGICA DE DEBUG: VAI IMPRIMIR NO TERMINAL ===
+            System.out.println("=== DEBUG ATUALIZAR MÉTODO ===");
+            System.out.println("URL disparada: " + url);
+            System.out.println("JSON enviado: " + json);
+            System.out.println("==============================");
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .header("Content-Type", "application/json")
+                    .PUT(HttpRequest.BodyPublishers.ofString(json))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            System.out.println("-> Resposta da Atualização C#: [" + response.statusCode() + "] " + response.body());
+
+            return response.statusCode() >= 200 && response.statusCode() < 300;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    @Override
+    public void salvarOuAtualizarMeta(String c, int m, int a, double v) {
+        enviarMetaParaApi(c, m, a, v);
+    }
+
+    @Override
+    public void salvarOuAtualizarMetaAnual(String c, int a, double v) {
+        // Ao salvar a meta anual em massa, aplicamos a partir de Janeiro
+        enviarMetaParaApi(c, 1, a, v);
+    }
+
+    private void enviarMetaParaApi(String nomeCategoria, int mes, int ano, double valor) {
+        try {
+            int catId = obterIdCategoriaPorNome(nomeCategoria);
+
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("categoriaId", catId);
+            payload.put("mesInicio", mes);
+            payload.put("anoInicio", ano);
+            payload.put("valorMeta", valor);
+
+            String json = objectMapper.writeValueAsString(payload);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(baseUrlRelatorios + "/configurar-meta"))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(json))
+                    .build();
+
+            httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+        } catch (Exception e) {
+            System.err.println("Erro ao enviar meta para API: " + e.getMessage());
+        }
+    }
 
     private HttpClient createInsecureClient() {
         try {

@@ -17,6 +17,13 @@
             <HBox spacing="10" alignment="CENTER_LEFT">
                 <ComboBox fx:id="cbMes" prefWidth="120"/>
                 <Spinner fx:id="spAno" prefWidth="80"/>
+                <!-- BOTÃO DE ATUALIZAR CORRIGIDO E FUNCIONAL -->
+                <Button text="🔄" onAction="#handleAtualizar"
+                        style="-fx-background-color: #34495e; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;">
+                    <tooltip>
+                        <Tooltip text="Atualizar Dashboard"/>
+                    </tooltip>
+                </Button>
             </HBox>
         </VBox>
         <Region HBox.hgrow="ALWAYS" />

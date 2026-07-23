@@ -323,4 +323,14 @@ public class MainControllerAPI {
         System.out.println("Cor não encontrada para " + nomeMetodo + ", usando branco.");
         return "#FFFFFF"; // Cor padrão branco
     }
+
+    @FXML
+    private void abrirLancamentoPeriodo() {
+        // Abre a nova tela que você vai criar (o nome do FXML pode ser ajustado depois se quiser)
+        abrirJanela("/lancamento_periodo_view_api.fxml", "Lançar Gasto por Período Maior");
+
+        // Atualiza a tabela principal assim que a janela for fechada,
+        // para garantir que os novos gastos (como o IPTU) apareçam na lista.
+        atualizarTabela();
+    }
 }

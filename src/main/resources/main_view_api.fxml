@@ -62,8 +62,14 @@
             <TextField fx:id="txtQtdParcelas" prefWidth="60" text="1"/>
         </HBox>
 
-        <Button text="Salvar Lançamento" onAction="#aoSalvar"
-                style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 20;"/>
+        <!-- NOVO: Container HBox para agrupar os botões de salvamento -->
+        <HBox spacing="15" alignment="CENTER">
+            <Button text="Salvar Lançamento" onAction="#aoSalvar"
+                    style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 20;"/>
+
+            <Button text="Colocar Gasto por um Período Maior" onAction="#abrirLancamentoPeriodo"
+                    style="-fx-background-color: #f39c12; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 20;"/>
+        </HBox>
 
         <Separator/>
 

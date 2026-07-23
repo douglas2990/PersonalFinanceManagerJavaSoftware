@@ -31,4 +31,6 @@ public interface GastoRepositoryAPI {
     double buscarSomaGastosPorCategoria(String categoria, int mes, int ano);
     double buscarMetaAnual(String categoria, int ano);
     double buscarMetaPorCategoria(String categoria, int mes, int ano);
+    // Adicione esta linha na sua interface
+    boolean atualizarMetodo(MetodoPagamentoApi metodo);
 }

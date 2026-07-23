@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox alignment="TOP_CENTER" spacing="15.0" xmlns="http://javafx.com/javafx/8"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="org.example.infrastructure.ui.LancamentoPeriodoControllerAPI"
+      prefWidth="450.0" prefHeight="550.0">
+
+    <padding>
+        <Insets bottom="25.0" left="25.0" right="25.0" top="25.0"/>
+    </padding>
+
+    <Label text="Lançamento por Período Maior" style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;"/>
+    <Separator/>
+
+    <!-- Campos básicos do Gasto -->
+    <TextField fx:id="txtDescricao" promptText="Descrição (ex: IPTU, Assinatura Anual)"/>
+
+    <HBox spacing="10">
+        <TextField fx:id="txtValor" promptText="Valor (0.00)" HBox.hgrow="ALWAYS"/>
+        <Spinner fx:id="spAno" prefWidth="100" editable="true"/>
+    </HBox>
+
+    <HBox spacing="10">
+        <ComboBox fx:id="cbCategoria" promptText="Categoria" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+        <ComboBox fx:id="cbMetodo" promptText="Pagamento" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+    </HBox>
+
+    <Separator/>
+    <Label text="Selecione os meses para replicação:" style="-fx-font-weight: bold; -fx-text-fill: #34495e;"/>
+
+    <!-- Grade de meses organizada em 3 colunas e 4 linhas -->
+    <GridPane hgap="15" vgap="10" alignment="CENTER">
+        <columnConstraints>
+            <ColumnConstraints prefWidth="110"/>
+            <ColumnConstraints prefWidth="110"/>
+            <ColumnConstraints prefWidth="110"/>
+        </columnConstraints>
+
+        <children>
+            <CheckBox fx:id="chkJan" text="Janeiro" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+            <CheckBox fx:id="chkFev" text="Fevereiro" GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+            <CheckBox fx:id="chkMar" text="Março" GridPane.columnIndex="2" GridPane.rowIndex="0"/>
+
+            <CheckBox fx:id="chkAbr" text="Abril" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+            <CheckBox fx:id="chkMai" text="Maio" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+            <CheckBox fx:id="chkJun" text="Junho" GridPane.columnIndex="2" GridPane.rowIndex="1"/>
+
+            <CheckBox fx:id="chkJul" text="Julho" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+            <CheckBox fx:id="chkAgo" text="Agosto" GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+            <CheckBox fx:id="chkSet" text="Setembro" GridPane.columnIndex="2" GridPane.rowIndex="2"/>
+
+            <CheckBox fx:id="chkOut" text="Outubro" GridPane.columnIndex="0" GridPane.rowIndex="3"/>
+            <CheckBox fx:id="chkNov" text="Novembro" GridPane.columnIndex="1" GridPane.rowIndex="3"/>
+            <CheckBox fx:id="chkDez" text="Dezembro" GridPane.columnIndex="2" GridPane.rowIndex="3"/>
+        </children>
+    </GridPane>
+
+    <Separator/>
+
+    <!-- Botões de Ação -->
+    <HBox spacing="15" alignment="CENTER">
+        <Button text="Cancelar" onAction="#aoCancelar"
+                style="-fx-background-color: #7f8c8d; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 20; -fx-cursor: hand;"/>
+        <Button text="Lançar nos Meses" onAction="#aoSalvarPeriodo"
+                style="-fx-background-color: #f39c12; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 20; -fx-cursor: hand;"/>
+    </HBox>
+
+</VBox>
